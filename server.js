@@ -16,6 +16,8 @@ const userRouter = require('./api/User');
 // All routes start with /user
 app.use('/user', userRouter);
 
+app.use(express.static("public"));
+
 // -------- Start Server --------
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
