@@ -12,9 +12,11 @@ app.use(express.json());
 
 // -------- Routes --------
 const userRouter = require('./api/User');
+const propretyRouter = require('./api/Proprety');
 
 // All routes start with /user
 app.use('/user', userRouter);
+app.use('/proprety', propretyRouter);
 
 app.use(express.static("public"));
 

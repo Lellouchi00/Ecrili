@@ -33,7 +33,14 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      verified: false,
+    famillyname:req.body.famillyname,
+    dateOfBirth:req.body.dateOfBirth,
+    username:req.body.username,
+    
+    phone:req.body.phone, 
+    image:req.body.image,
+    isLessor:req.body.isLessor === true,
+    verified :false
     });
 
     const savedUser = await newUser.save();
@@ -159,7 +166,10 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id },
+      { 
+        id: user._id,
+        isLessor: user.isLessor 
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
