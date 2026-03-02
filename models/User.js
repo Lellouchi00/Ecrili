@@ -9,7 +9,12 @@ const UserSchema =new Schema ({
     dateOfBirth:String,
     password:String,
     phone:String, 
-    image:String,
+    images: [
+        {
+          url: String,
+          public_id: String
+        }
+      ],
     isLessor:Boolean,
     verified : Boolean
 })

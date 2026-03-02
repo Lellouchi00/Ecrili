@@ -2,6 +2,9 @@ const router = require("express").Router();
 const User = require("../models/User");
 const UserVerification = require("../models/UserVerification");
 const PasswordReset = require("../models/PasswordReset");
+const auth = require("../middleware/authMiddleware");
+const cloudinary = require("../config/cloudinary");
+const upload = require("../middleware/upload");
 
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
@@ -254,5 +257,47 @@ router.post("/reset/:userId/:resetString", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+//create a image
+router.put(
+  "/:id/images",
+  auth,
+  upload.array("images", 5),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.params.id);
+
+      if (!user)
+        return res.status(404).json({ message: "User not found" });
+
+      if (!req.files || req.files.length === 0)
+        return res.status(400).json({ message: "No images uploaded" });
+
+      const uploadedImages = [];
+
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(
+          `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+          { folder: "userimages" }
+        );
+
+        uploadedImages.push({
+          url: result.secure_url,
+          public_id: result.public_id
+        });
+      }
+
+     
+      user.images.push(...uploadedImages);
+
+      const updatedUser = await user.save();
+
+      res.status(200).json(updatedUser);
+
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 module.exports = router;
