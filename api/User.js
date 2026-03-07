@@ -183,6 +183,33 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ================= SHOW RESET PASSWORD PAGE =================
+router.get("/reset-password/:userId/:resetString", (req, res) => {
+  res.sendFile(require("path").join(__dirname, "../views/resetPassword.html"));
+});
+
+// ================= VERIFY RESET LINK (HEAD request) =================
+router.head("/reset-password/:userId/:resetString", async (req, res) => {
+  try {
+    const { userId, resetString } = req.params;
+    
+    const record = await PasswordReset.findOne({ userId });
+    
+    if (!record || record.expiresAt < Date.now()) {
+      return res.status(404).end();
+    }
+    
+    const valid = await bcrypt.compare(resetString, record.resetString);
+    
+    if (!valid) {
+      return res.status(404).end();
+    }
+    
+    res.status(200).end();
+  } catch (err) {
+    res.status(500).end();
+  }
+});
 
 // ================= REQUEST PASSWORD RESET =================
 router.post("/requestPasswordReset", async (req, res) => {
@@ -207,13 +234,21 @@ router.post("/requestPasswordReset", async (req, res) => {
       expiresAt: Date.now() + 3600000,
     }).save();
 
-    const link = `http://localhost:${process.env.PORT}/user/reset/${user._id}/${resetString}`;
+    const link = `http://localhost:${process.env.PORT}/user/reset-password/${user._id}/${resetString}`;
 
     await transporter.sendMail({
       from: process.env.AUTH_EMAIL,
       to: email,
       subject: "Reset Password",
-      html: `<a href="${link}">Click here to reset password</a>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #8a2be2;">Reset Your Password</h2>
+          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
+          <a href="${link}" style="display: inline-block; background: #8a2be2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 30px; margin: 20px 0;">Reset Password</a>
+          <p>Or copy this link: <br> <small>${link}</small></p>
+          <p>If you didn't request this, please ignore this email.</p>
+        </div>
+      `,
     });
 
     res.json({ message: "Password reset email sent" });
@@ -223,11 +258,31 @@ router.post("/requestPasswordReset", async (req, res) => {
   }
 });
 
+// ================= SHOW RESET PASSWORD PAGE =================
+router.get("/reset-password/:userId/:resetString", (req, res) => {
+  res.sendFile(require("path").join(__dirname, "../views/resetPassword.html"));
+});
+
+// ================= SHOW PASSWORD RESET SUCCESS PAGE =================
+router.get("/password-reset-success", (req, res) => {
+  res.sendFile(require("path").join(__dirname, "../views/password-reset-success.html"));
+});
+
 // ================= RESET PASSWORD =================
-router.post("/reset/:userId/:resetString", async (req, res) => {
+router.post("/reset-password/:userId/:resetString", async (req, res) => {
   try {
     const { userId, resetString } = req.params;
     const { newPassword } = req.body;
+
+    // التحقق من قوة كلمة المرور
+    const hasLength = newPassword.length >= 8;
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    
+    if (!hasLength || !hasUppercase || !hasNumber || !hasSpecial) {
+      return res.status(400).json({ message: "Password does not meet requirements" });
+    }
 
     const record = await PasswordReset.findOne({ userId });
 
