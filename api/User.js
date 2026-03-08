@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const User = require("../models/User");
 const UserVerification = require("../models/UserVerification");
-const PasswordReset = require("../models/PasswordReset");
 const auth = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 const upload = require("../middleware/upload");
@@ -10,6 +9,7 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const { v4: uuidv4 } = require("uuid");
 const jwt = require("jsonwebtoken");
+const  generateCode  = require("../middleware/generateCode");
 
 // ================= EMAIL CONFIG =================
 const transporter = nodemailer.createTransport({
@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
 
     const userExist = await User.findOne({ email });
     if (userExist) {
-      return res.json({ message: "User already exists" });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -48,66 +48,52 @@ router.post("/register", async (req, res) => {
 
     const savedUser = await newUser.save();
 
-    const uniqueString = uuidv4() + savedUser._id;
-    const hashedUniqueString = await bcrypt.hash(uniqueString, 10);
+    const codeVerification=generateCode();
+    const hashcodeVerification = await bcrypt.hash(codeVerification, 10);
 
     await new UserVerification({
       userId: savedUser._id,
-      uniqueString: hashedUniqueString,
+      code: hashcodeVerification,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 21600000,
+      expiresAt:Date.now() + 10 * 60 * 1000,
+      isRestPassword:false
     }).save();
 
-    const link = `http://localhost:${process.env.PORT}/user/verify/${savedUser._id}/${uniqueString}`;
-
     await transporter.sendMail({
-        from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
-        to: email,
-        subject: "Verify Your Email - ACRILI",
-        html: `
-          <div style="font-family: Arial; background:#f4f6fb; padding:40px;">
-            <div style="max-width:600px; background:white; margin:auto; padding:30px; border-radius:10px; box-shadow:0 5px 20px rgba(0,0,0,0.1);">
-              
-              <div style="text-align:center;">
-                <img src="cid:acrililogo" width="150"/>
-                <h2 style="color:#4e54c8;">Welcome to ACRILI</h2>
-              </div>
+  from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
+  to: email,
+  subject: "ACRILI Verification Code",
+  html: `
+  <div style="font-family: Arial; background:#f4f6fb; padding:40px;">
+    
+    <div style="max-width:500px; margin:auto; background:white; padding:30px; border-radius:10px; text-align:center;">
       
-              <p>Hello,</p>
-              <p>Thank you for registering with <strong>ACRILI</strong>.</p>
-              <p>Please verify your email by clicking the button below:</p>
-      
-              <div style="text-align:center; margin:30px 0;">
-                <a href="${link}" 
-                   style="background:#4e54c8; color:white; padding:12px 25px; text-decoration:none; border-radius:6px;">
-                   Verify Email
-                </a>
-              </div>
-      
-              <p style="color:#888; font-size:14px;">
-                ⚠ This verification link will expire in 6 hours.
-              </p>
-      
-              <hr>
-      
-              <p style="font-size:12px; color:#aaa;">
-                This email was sent by ACRILI Company.<br>
-                If you did not request this, please ignore this email.
-              </p>
-      
-            </div>
-          </div>
-        `,
-        attachments: [
-          {
-            filename: "logo.png",
-            path: "./public/logo.png",
-            cid: "acrililogo"
-          }
-        ]
-      });
+      <h2 style="color:#4e54c8;">Email Verification</h2>
+      <p>Your verification code is:</p>
 
-    res.json({ message: "Verification email sent" });
+      <div id="otpBox" 
+           style="font-size:40px; letter-spacing:8px; font-weight:bold; 
+           background:#f1f3ff; padding:20px; border-radius:8px; margin:20px 0;">
+        ${codeVerification}
+      </div>
+
+      <button onclick="navigator.clipboard.writeText('${codeVerification}')"
+        style="background:#4e54c8; color:white; border:none; padding:10px 20px;
+        border-radius:6px; cursor:pointer; font-size:16px;">
+        Copy Code
+      </button>
+
+      <p style="margin-top:25px; font-size:14px; color:#888;">
+        This code will expire in 10 minutes.
+      </p>
+
+    </div>
+
+  </div>
+  `
+});
+
+    res.status(200).json({ message: "Verification email sent" });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -115,38 +101,54 @@ router.post("/register", async (req, res) => {
 });
 
 // ================= VERIFY EMAIL =================
-router.get("/verify/:userId/:uniqueString", async (req, res) => {
+router.post("/verify", async (req, res) => {
   try {
-    const { userId, uniqueString } = req.params;
 
-    const record = await UserVerification.findOne({ userId });
+    const { email, code } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const record = await UserVerification.findOne({ userId: user._id });
 
     if (!record) {
-      return res.send("Invalid verification link");
+      return res.status(400).json({ message: "Verification not found" });
     }
 
     if (record.expiresAt < Date.now()) {
-      await User.deleteOne({ _id: userId });
-      await UserVerification.deleteOne({ userId });
-      return res.send("Verification link expired");
+      await UserVerification.deleteOne({ userId: user._id });
+      return res.status(400).json({ message: "Code expired" });
     }
 
-    const valid = await bcrypt.compare(uniqueString, record.uniqueString);
+    const valid = await bcrypt.compare(code, record.code);
 
     if (!valid) {
-      return res.send("Invalid verification details");
+      return res.status(400).json({ message: "Invalid code" });
     }
 
-    await User.updateOne({ _id: userId }, { verified: true });
-    await UserVerification.deleteOne({ userId });
+    user.verified = true;
+    await user.save();
 
-    res.sendFile(require("path").join(__dirname, "../views/verified.html"));
+    await UserVerification.deleteOne({ userId: user._id });
 
-  } catch (err) {
-    res.status(500).send(err.message);
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ token, verified: true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Server error during verification"
+    });
   }
 });
-
 // ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
@@ -155,17 +157,17 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.json({ message: "User not found" });
+      return res.status(400).json({ message: "User not found" });
     }
 
     if (!user.verified) {
-      return res.json({ message: "Please verify your email" });
+      return res.status(400).json({ message: "Please verify your email" });
     }
 
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      return res.json({ message: "Incorrect password" });
+      return res.status(400).json({ message: "Incorrect password" });
     }
 
     const token = jwt.sign(
@@ -177,139 +179,130 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({ message: "Login successful", token });
+    res.status(200).json({ message: "Login successful", token });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-// ================= SHOW RESET PASSWORD PAGE =================
-router.get("/reset-password/:userId/:resetString", (req, res) => {
-  res.sendFile(require("path").join(__dirname, "../views/resetPassword.html"));
-});
 
-// ================= VERIFY RESET LINK (HEAD request) =================
-router.head("/reset-password/:userId/:resetString", async (req, res) => {
-  try {
-    const { userId, resetString } = req.params;
-    
-    const record = await PasswordReset.findOne({ userId });
-    
-    if (!record || record.expiresAt < Date.now()) {
-      return res.status(404).end();
-    }
-    
-    const valid = await bcrypt.compare(resetString, record.resetString);
-    
-    if (!valid) {
-      return res.status(404).end();
-    }
-    
-    res.status(200).end();
-  } catch (err) {
-    res.status(500).end();
-  }
-});
+//forget password 
 
-// ================= REQUEST PASSWORD RESET =================
-router.post("/requestPasswordReset", async (req, res) => {
+router.post('/forget', async (req, res) => {
   try {
     const { email } = req.body;
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.json({ message: "User not found" });
+    const thisUser = await User.findOne({ email });
+    if (!thisUser) {
+      return res.status(400).json({ message: 'User not found' });
     }
 
-    await PasswordReset.deleteMany({ userId: user._id });
+    // حذف أي OTP قديم
+    await UserVerification.deleteMany({ userId: thisUser._id });
 
-    const resetString = uuidv4() + user._id;
-    const hashedResetString = await bcrypt.hash(resetString, 10);
+    // توليد الكود
+    const codeVerification = generateCode(); // مثلا 6 أرقام
+    const hashCode = await bcrypt.hash(codeVerification, 10);
 
-    await new PasswordReset({
-      userId: user._id,
-      resetString: hashedResetString,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 3600000,
-    }).save();
-
-    const link = `http://localhost:${process.env.PORT}/user/reset-password/${user._id}/${resetString}`;
-
-    await transporter.sendMail({
-      from: process.env.AUTH_EMAIL,
-      to: email,
-      subject: "Reset Password",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
-          <h2 style="color: #8a2be2;">Reset Your Password</h2>
-          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
-          <a href="${link}" style="display: inline-block; background: #8a2be2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 30px; margin: 20px 0;">Reset Password</a>
-          <p>Or copy this link: <br> <small>${link}</small></p>
-          <p>If you didn't request this, please ignore this email.</p>
-        </div>
-      `,
+    await UserVerification.create({
+      userId: thisUser._id,
+      code: hashCode,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 دقائق
+      isResetPassword: true
     });
 
-    res.json({ message: "Password reset email sent" });
+    // إرسال الإيميل
+    await transporter.sendMail({
+      from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
+      to: email,
+      subject: "Password Reset Code",
+      html: `
+        <div style="font-family: Arial; text-align:center; padding:30px;">
+          <h2>Password Reset</h2>
+          <p>Your verification code is:</p>
+          <div style="font-size:40px; letter-spacing:8px; font-weight:bold; 
+                      background:#f1f3ff; padding:20px; border-radius:8px; margin:20px 0;">
+            ${codeVerification}
+          </div>
+          <p style="color:#888;">This code will expire in 10 minutes.</p>
+        </div>
+      `
+    });
+
+    res.status(200).json({ message: 'Email sent successfully' });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// ================= SHOW RESET PASSWORD PAGE =================
-router.get("/reset-password/:userId/:resetString", (req, res) => {
-  res.sendFile(require("path").join(__dirname, "../views/resetPassword.html"));
-});
-
-// ================= SHOW PASSWORD RESET SUCCESS PAGE =================
-router.get("/password-reset-success", (req, res) => {
-  res.sendFile(require("path").join(__dirname, "../views/password-reset-success.html"));
-});
-
-// ================= RESET PASSWORD =================
-router.post("/reset-password/:userId/:resetString", async (req, res) => {
+router.post('/confirm', async (req, res) => {
   try {
-    const { userId, resetString } = req.params;
-    const { newPassword } = req.body;
+    const { email, code } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
 
-    // التحقق من قوة كلمة المرور
-    const hasLength = newPassword.length >= 8;
-    const hasUppercase = /[A-Z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
-    
-    if (!hasLength || !hasUppercase || !hasNumber || !hasSpecial) {
-      return res.status(400).json({ message: "Password does not meet requirements" });
-    }
-
-    const record = await PasswordReset.findOne({ userId });
-
-    if (!record) {
-      return res.json({ message: "Invalid reset request" });
-    }
+    const record = await UserVerification.findOne({ userId: user._id ,});
+    if (!record) return res.status(400).json({ message: "Verification not found" });
 
     if (record.expiresAt < Date.now()) {
-      await PasswordReset.deleteOne({ userId });
-      return res.json({ message: "Reset link expired" });
+      await UserVerification.deleteOne({ userId: user._id });
+      return res.status(400).json({ message: "Code expired" });
     }
 
-    const valid = await bcrypt.compare(resetString, record.resetString);
+    const valid = await bcrypt.compare(code, record.code);
+    if (!valid) return res.status(400).json({ message: "Invalid code" });
 
-    if (!valid) {
-      return res.json({ message: "Invalid reset details" });
-    }
+    console.log(user)
+    const token = jwt.sign(
+      { id: user._id, action:"reset-password" },
+      process.env.JWT_SECRET,
+      { expiresIn: "20m" }
+    );
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await User.updateOne({ _id: userId }, { password: hashedPassword });
-    await PasswordReset.deleteOne({ userId });
 
-    res.json({ message: "Password reset successful" });
+    // حذف سجل التحقق
+    await UserVerification.deleteOne({ userId: user._id });
+
+    res.json({ token, });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put('/password', auth, async (req, res) => {
+  try {
+    const { id, action } = req.user; // من JWT
+    const { password, newPassword } = req.body;
+    console.log(action)
+    const user = await User.findById(id);
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const hashNewPassword = await bcrypt.hash(newPassword, 10);
+
+    if (action === "reset-password") {
+      user.password = hashNewPassword;
+      await user.save();
+
+      // حذف أي OTP قديم مرتبط بالمستخدم
+      await UserVerification.deleteMany({ userId: user._id });
+
+    } else {
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) return res.status(400).json({ message: "Incorrect password" });
+
+      user.password = hashNewPassword;
+      await user.save();
+    }
+
+    res.status(200).json({ message: "Password updated successfully" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

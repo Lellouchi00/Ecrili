@@ -4,7 +4,7 @@ const UserVerificationSchema = new mongoose.Schema({
   userId: {
     type: String,
   },
-  uniqueString: {
+  code: {
     type: String,
   },
   createdAt: {
@@ -13,6 +13,9 @@ const UserVerificationSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
   },
+  isRestPassword: {
+    type:Boolean
+  }
 });
 
 module.exports = mongoose.model(
