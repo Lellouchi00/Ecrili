@@ -347,5 +347,37 @@ router.put(
     }
   }
 );
+//----------------------
+router.post("/me/saved/:id", auth, async (req, res) => {
+
+  try {
+
+    const propertyId = req.params.id;
+
+    const user = await User.findById(req.user.id);
+
+    if (user.savedProperties.includes(propertyId)) {
+      return res.status(400).json({
+        success:false,
+        message:"Property already saved"
+      });
+    }
+
+    user.savedProperties.push(propertyId);
+
+    await user.save();
+
+    res.json({
+      success:true,
+      message:"Property saved successfully"
+    });
+
+  } catch (err) {
+
+    res.status(500).json({error:err.message});
+
+  }
+
+});
 
 module.exports = router;
