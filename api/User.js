@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
 
     const userExist = await User.findOne({ email });
     if (userExist) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "User already exists",type:'email' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -39,7 +39,6 @@ router.post("/register", async (req, res) => {
     famillyname:req.body.famillyname,
     dateOfBirth:req.body.dateOfBirth,
     username:req.body.username,
-    
     phone:req.body.phone, 
     image:req.body.image,
     isLessor:req.body.isLessor === true,
@@ -149,6 +148,48 @@ router.post("/verify", async (req, res) => {
     });
   }
 });
+
+router.post("/send-code", async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // توليد كود 6 أرقام
+    const codeVerification = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // إرسال الإيميل
+    await transporter.sendMail({
+      from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
+      to: email,
+      subject: "verify Code",
+      html: `
+        <div style="font-family: Arial; text-align:center; padding:30px;">
+          <h2>verify code</h2>
+          <p>Your verification code is:</p>
+          <div style="font-size:40px; letter-spacing:8px; font-weight:bold;
+                      background:#f1f3ff; padding:20px; border-radius:8px; margin:20px 0;">
+            ${codeVerification}
+          </div>
+          <p style="color:#888;">This code will expire in 10 minutes.</p>
+        </div>
+      `
+    });
+
+    res.status(200).json({
+      message: "Verification code sent successfully"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Error sending verification email"
+    });
+  }
+});
 // ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
@@ -157,17 +198,14 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: "User not found" ,type:'email'});
     }
 
-    if (!user.verified) {
-      return res.status(400).json({ message: "Please verify your email" });
-    }
 
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      return res.status(400).json({ message: "Incorrect password" });
+      return res.status(400).json({ message: "Incorrect password" ,type:'password'});
     }
 
     const token = jwt.sign(
