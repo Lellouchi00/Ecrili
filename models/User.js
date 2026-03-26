@@ -16,7 +16,13 @@ const UserSchema =new Schema ({
         }
       ],
     isLessor:Boolean,
-    verified : Boolean
+    verified : Boolean,
+    savedProperties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property"
+      }
+    ]
 })
 
 const User = mongoose.model('User',UserSchema);

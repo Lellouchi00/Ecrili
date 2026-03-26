@@ -157,9 +157,24 @@ router.post("/send-code", async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
+     const thisUser = await User.findOne({ email });
+    if (!thisUser) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // حذف أي OTP قديم
+    await UserVerification.deleteMany({ userId: thisUser._id });
 
     // توليد كود 6 أرقام
     const codeVerification = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const hashCode = await bcrypt.hash(codeVerification, 10);
+    await UserVerification.create({
+      userId: thisUser._id,
+      code: hashCode,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 دقائق
+      isResetPassword: true
+    });
 
     // إرسال الإيميل
     await transporter.sendMail({
@@ -385,5 +400,37 @@ router.put(
     }
   }
 );
+//----------------------
+router.post("/me/saved/:id", auth, async (req, res) => {
+
+  try {
+
+    const propertyId = req.params.id;
+
+    const user = await User.findById(req.user.id);
+
+    if (user.savedProperties.includes(propertyId)) {
+      return res.status(400).json({
+        success:false,
+        message:"Property already saved"
+      });
+    }
+
+    user.savedProperties.push(propertyId);
+
+    await user.save();
+
+    res.json({
+      success:true,
+      message:"Property saved successfully"
+    });
+
+  } catch (err) {
+
+    res.status(500).json({error:err.message});
+
+  }
+
+});
 
 module.exports = router;
