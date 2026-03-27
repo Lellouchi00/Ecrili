@@ -10,29 +10,29 @@ const PropertySchema = new mongoose.Schema(
   type: {
     type: String,
     enum: ["apartment","villa","studio","house"],
-    required: true
+    
   },
 
   area: {
     type: Number,
-    required: true
+    
   },
 
   rooms: {
     type: Number,
-    required: true
+   
   },
 
   bathrooms: {
     type: Number,
-    required: true
+    
   },
 
   floor: Number,
 
   description: {
     type: String,
-    required: true
+   
   },
 
   amenities: [
@@ -65,23 +65,23 @@ const PropertySchema = new mongoose.Schema(
 
   price: {
     type: Number,
-    required: true
+    
   },
 
   deposit: {
     type: Number,
-    required: true
+    
   },
 
   availability_date: {
     type: Date,
-    required: true
+    
   },
 
   rental_duration: {
     type: String,
     enum: ["long_term","short_term","flexible"],
-    required: true
+    
   },
 
   images: [String],
