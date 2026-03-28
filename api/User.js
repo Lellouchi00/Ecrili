@@ -162,10 +162,10 @@ router.post("/send-code", async (req, res) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    // حذف أي OTP قديم
+    
     await UserVerification.deleteMany({ userId: thisUser._id });
 
-    // توليد كود 6 أرقام
+    
     const codeVerification = Math.floor(100000 + Math.random() * 900000).toString();
 
     const hashCode = await bcrypt.hash(codeVerification, 10);
@@ -176,7 +176,7 @@ router.post("/send-code", async (req, res) => {
       isResetPassword: true
     });
 
-    // إرسال الإيميل
+    
     await transporter.sendMail({
       from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
       to: email,
@@ -249,10 +249,10 @@ router.post('/forget', async (req, res) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    // حذف أي OTP قديم
+    
     await UserVerification.deleteMany({ userId: thisUser._id });
 
-    // توليد الكود
+    
     const codeVerification = generateCode(); // مثلا 6 أرقام
     const hashCode = await bcrypt.hash(codeVerification, 10);
 
@@ -263,7 +263,7 @@ router.post('/forget', async (req, res) => {
       isResetPassword: true
     });
 
-    // إرسال الإيميل
+    
     await transporter.sendMail({
       from: `"ACRILI" <${process.env.AUTH_EMAIL}>`,
       to: email,
@@ -315,7 +315,7 @@ router.post('/confirm', async (req, res) => {
 
 
 
-    // حذف سجل التحقق
+    
     await UserVerification.deleteOne({ userId: user._id });
 
     res.json({ token, });
@@ -340,7 +340,7 @@ router.put('/password', auth, async (req, res) => {
       user.password = hashNewPassword;
       await user.save();
 
-      // حذف أي OTP قديم مرتبط بالمستخدم
+      
       await UserVerification.deleteMany({ userId: user._id });
 
     } else {

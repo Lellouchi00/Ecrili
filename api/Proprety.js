@@ -5,6 +5,22 @@ const auth = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 const upload = require("../middleware/upload");
 
+//get all
+router.get("/all", async (req, res) => {
+  try {
+
+    const properties = await Property.find()
+      
+
+    res.json({
+      success: true,
+      data: properties
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ===============================
 // SEARCH PROPERTIES (FILTER + PAGINATION)
@@ -165,7 +181,131 @@ router.post(
 
   }
 );
+// ===============================
+// UPDATE PROPERTY
+// ===============================
+router.put(
+  "/:id",
+  auth,
+  upload.array("images", 10),
+  async (req, res) => {
+    try {
 
+      const property = await Property.findById(req.params.id);
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          error: "PROPERTY_NOT_FOUND"
+        });
+      }
+
+      if (property.owner.toString() !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+      let uploadedImages = property.images;
+
+      if (req.files && req.files.length > 0) {
+        uploadedImages = [];
+
+        for (const file of req.files) {
+          const result = await cloudinary.uploader.upload(
+            `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+            { folder: "properties" }
+          );
+
+          uploadedImages.push(result.secure_url);
+        }
+      }
+
+      const updatedFields = {
+        title: req.body.title,
+        type: req.body.type,
+        area: req.body.area,
+        rooms: req.body.rooms,
+        bathrooms: req.body.bathrooms,
+        floor: req.body.floor,
+        description: req.body.description,
+        amenities: req.body.amenities,
+        price: req.body.price,
+        deposit: req.body.deposit,
+        availability_date: req.body.availability_date,
+        rental_duration: req.body.rental_duration,
+        contact: req.body.contact,
+        images: uploadedImages
+      };
+
+      Object.keys(updatedFields).forEach(
+        key => updatedFields[key] === undefined && delete updatedFields[key]
+      );
+
+      if (req.body.city || req.body.address || req.body.state || req.body.country) {
+        property.location = {
+          address: req.body.address || property.location.address,
+          city: req.body.city || property.location.city,
+          state: req.body.state || property.location.state,
+          country: req.body.country || property.location.country
+        };
+      }
+
+      Object.assign(property, updatedFields);
+
+      await property.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Property updated successfully",
+        data: property
+      });
+
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+// ===============================
+// Delete PROPERTY
+// ===============================
+router.delete(
+  "/:id",
+  auth,
+  upload.array("images", 10),
+  async (req, res) => {
+    try {
+
+      const property = await Property.findById(req.params.id);
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          error: "PROPERTY_NOT_FOUND"
+        });
+      }
+
+      if (property.owner.toString() !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+      await Property.findByIdAndDelete(req.params.id);
+      return res.json({
+        success: true,
+        message: "Property deleted successfully",
+      });
+
+      
+
+      
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // ===============================
 // GET REVIEWS
@@ -244,5 +384,103 @@ router.post("/:id/reviews", auth, async (req, res) => {
   }
 
 });
+// ===============================
+// PUT REVIEW
+// ===============================
+router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.reviewID);
+
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        error: "REVIEW_NOT_FOUND",
+      });
+    }
+
+    
+    if (review.property.toString() !== req.params.id) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PROPERTY_REVIEW",
+      });
+    }
+
+    
+    if (review.author.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: "NOT_AUTHORIZED",
+      });
+    }
+
+    
+    review.rating = req.body.rating ?? review.rating;
+    review.comment = req.body.comment ?? review.comment;
+
+    await review.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Review updated successfully",
+      data: review,
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// ===============================
+// Delete PROPERTY
+// ===============================
+router.delete(
+  "/:id/:reviewID/reviews",
+  auth,
+  async (req, res) => {
+    try {
+
+      const review = await Review.findById(req.params.reviewID);
+
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        error: "REVIEW_NOT_FOUND",
+      });
+    }
+
+    
+    if (review.property.toString() !== req.params.id) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PROPERTY_REVIEW",
+      });
+    }
+
+    
+    if (review.author.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: "NOT_AUTHORIZED",
+      });
+    }
+
+    
+    
+
+    await review.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Review deleted successfully",
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+  }
+);
+
 
 module.exports = router;
