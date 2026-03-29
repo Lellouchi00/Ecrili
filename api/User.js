@@ -325,7 +325,7 @@ router.post('/confirm', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
+//change password
 router.put('/password', auth, async (req, res) => {
   try {
     const { id, action } = req.user; // من JWT
@@ -400,7 +400,7 @@ router.put(
     }
   }
 );
-//----------------------
+//SAVE A PROPRETY
 router.post("/me/saved/:id", auth, async (req, res) => {
 
   try {
@@ -430,6 +430,52 @@ router.post("/me/saved/:id", auth, async (req, res) => {
     res.status(500).json({error:err.message});
 
   }
+
+});
+// ===============================
+// Delete SAVED PROPRETY
+// ===============================
+router.delete(
+  "/me/saved/:id",
+  auth,
+  async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+
+      const user = await User.findById(req.user.id);
+
+      user.savedProperties = user.savedProperties.filter(
+        (id) => id.toString() !== propertyId
+      );
+ await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Property removed from favorites",
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+  }
+);
+//---------------------
+//GET ALL SAVES 
+//--------------------
+router.get('/me/saved',auth,async(req,res)=>{
+  try{
+    const user = await User.findById(req.user.id).populate(savedProperties);
+    
+    res.status(200).json({
+      success: true,
+      data:savedProperties,
+    });
+
+
+  }catch(err){
+    res.status(500).json({ error: err.message });
+  }
+
 
 });
 

@@ -21,6 +21,22 @@ router.get("/all", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ===============================
+// Get a one user all proprety
+// ===============================
+
+
+router.get('/allByOwner', auth, async (req, res) => {
+  try {
+    const userProperties = await Property.find({ owner: req.user.id });
+    res.json({
+      success: true,
+      data: userProperties
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ===============================
 // SEARCH PROPERTIES (FILTER + PAGINATION)
@@ -82,6 +98,61 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ===============================
+// GET STAT
+// ===============================
+router.get("/stats/overview", async (req, res) => {
+  try {
+    const stats = await Property.aggregate([
+      {
+        $match: { 
+          status: "available",
+          "location.city": { $ne: null }
+        }
+      },
+      {
+        $facet: {
+          general: [
+            {
+              $group: {
+                _id: null,
+                totalProperties: { $sum: 1 },
+                avgPrice: { $avg: "$price" },
+                avgRating: { $avg: "$ratingsAverage" },
+                totalViews: { $sum: "$views" },
+                maxPrice: { $max: "$price" },
+                minPrice: { $min: "$price" }
+              }
+            }
+          ],
+          byCity: [
+            {
+              $group: {
+                _id: "$location.city",
+                count: { $sum: 1 },
+                avgPrice: { $avg: "$price" }
+              }
+            },
+            {
+              $sort: { count: -1 }
+            }
+          ]
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        general: stats[0].general[0] || {},
+        byCity: stats[0].byCity
+      }
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ===============================
 // GET SINGLE PROPERTY
@@ -181,6 +252,7 @@ router.post(
 
   }
 );
+
 // ===============================
 // UPDATE PROPERTY
 // ===============================
@@ -267,6 +339,7 @@ router.put(
     }
   }
 );
+
 // ===============================
 // Delete PROPERTY
 // ===============================
@@ -298,9 +371,6 @@ router.delete(
         message: "Property deleted successfully",
       });
 
-      
-
-      
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -344,7 +414,6 @@ router.get("/:id/reviews", async (req, res) => {
 
 });
 
-
 // ===============================
 // ADD REVIEW
 // ===============================
@@ -384,6 +453,7 @@ router.post("/:id/reviews", auth, async (req, res) => {
   }
 
 });
+
 // ===============================
 // PUT REVIEW
 // ===============================
@@ -391,7 +461,6 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
   try {
     const review = await Review.findById(req.params.reviewID);
 
-    
     if (!review) {
       return res.status(404).json({
         success: false,
@@ -399,7 +468,6 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
       });
     }
 
-    
     if (review.property.toString() !== req.params.id) {
       return res.status(400).json({
         success: false,
@@ -407,7 +475,6 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
       });
     }
 
-    
     if (review.author.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
@@ -415,7 +482,6 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
       });
     }
 
-    
     review.rating = req.body.rating ?? review.rating;
     review.comment = req.body.comment ?? review.comment;
 
@@ -431,8 +497,9 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 // ===============================
-// Delete PROPERTY
+// Delete review
 // ===============================
 router.delete(
   "/:id/:reviewID/reviews",
@@ -442,45 +509,38 @@ router.delete(
 
       const review = await Review.findById(req.params.reviewID);
 
-    
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        error: "REVIEW_NOT_FOUND",
+      if (!review) {
+        return res.status(404).json({
+          success: false,
+          error: "REVIEW_NOT_FOUND",
+        });
+      }
+
+      if (review.property.toString() !== req.params.id) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_PROPERTY_REVIEW",
+        });
+      }
+
+      if (review.author.toString() !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "NOT_AUTHORIZED",
+        });
+      }
+
+      await review.deleteOne();
+
+      res.status(200).json({
+        success: true,
+        message: "Review deleted successfully",
       });
+
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    
-    if (review.property.toString() !== req.params.id) {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_PROPERTY_REVIEW",
-      });
-    }
-
-    
-    if (review.author.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: "NOT_AUTHORIZED",
-      });
-    }
-
-    
-    
-
-    await review.deleteOne();
-
-    res.status(200).json({
-      success: true,
-      message: "Review deleted successfully",
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
   }
 );
-
 
 module.exports = router;

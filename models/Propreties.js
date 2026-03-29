@@ -105,6 +105,20 @@ const PropertySchema = new mongoose.Schema(
     type: String,
     enum: ["pending_review","available","rented","unavailable"],
     default: "pending_review"
+  },
+  ratingsAverage: {
+    type: Number,
+    default: 0
+  },
+  
+  ratingsQuantity: {
+    type: Number,
+    default: 0
+  },
+  
+  views: {
+    type: Number,
+    default: 0
   }
 
 },
