@@ -497,6 +497,29 @@ router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+ // add favorites posts by the user 
+router.post("/add_to_favoris", async (req, res) => {
+
+   const { userId, postId } = req.body;
+
+   try {
+
+      const user = await User.findById(userId);
+      if (!user) {
+         return res.json({ message: "User not found" });
+      }
+
+      user.favoris.push(postId);
+
+      await user.save();
+
+      res.json({ message: "Post added to favorites" });
+
+   } catch (err) {
+      res.status(500).json({ message: "Server error" });
+   }
+
+});
 
 // ===============================
 // Delete review
