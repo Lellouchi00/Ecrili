@@ -363,7 +363,7 @@ router.put('/password', auth, async (req, res) => {
 router.put(
   "/:id/images",
   auth,
-  upload.array("images", 5),
+  upload.array("images", 1),
   async (req, res) => {
     try {
       const user = await User.findById(req.params.id);

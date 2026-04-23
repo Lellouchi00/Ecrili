@@ -1,56 +1,85 @@
 const router = require("express").Router();
 const Property = require("../models/Propreties");
 const Review = require("../models/review");
+const Notification = require("../models/notification");
 const auth = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 const upload = require("../middleware/upload");
 
-//get all
 router.get("/all", async (req, res) => {
   try {
-
-    const properties = await Property.find()
-      
-
-    res.json({
-      success: true,
-      data: properties
-    });
-
+    const properties = await Property.find();
+    res.json({ success: true, data: properties });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-// ===============================
-// Get a one user all proprety
-// ===============================
-
 
 router.get('/allByOwner', auth, async (req, res) => {
   try {
     const userProperties = await Property.find({ owner: req.user.id });
+    res.json({ success: true, data: userProperties });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/stats/overview", async (req, res) => {
+  try {
+    const stats = await Property.aggregate([
+      {
+        $match: {
+          status: "available",
+          "location.city": { $ne: null }
+        }
+      },
+      {
+        $facet: {
+          general: [
+            {
+              $group: {
+                _id: null,
+                totalProperties: { $sum: 1 },
+                avgPrice: { $avg: "$price" },
+                avgRating: { $avg: "$ratingsAverage" },
+                totalViews: { $sum: "$views" },
+                maxPrice: { $max: "$price" },
+                minPrice: { $min: "$price" }
+              }
+            }
+          ],
+          byCity: [
+            {
+              $group: {
+                _id: "$location.city",
+                count: { $sum: 1 },
+                avgPrice: { $avg: "$price" }
+              }
+            },
+            { $sort: { count: -1 } }
+          ]
+        }
+      }
+    ]);
+
     res.json({
       success: true,
-      data: userProperties
+      data: {
+        general: stats[0].general[0] || {},
+        byCity: stats[0].byCity
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ===============================
-// SEARCH PROPERTIES (FILTER + PAGINATION)
-// ===============================
 router.get("/", async (req, res) => {
   try {
-
     const { location, room_type, min_price, max_price, page, limit, sort } = req.query;
 
     if (!location || !room_type || !min_price || !max_price || !page || !limit) {
-      return res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR"
-      });
+      return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
     }
 
     const query = {
@@ -92,298 +121,205 @@ router.get("/", async (req, res) => {
         }
       }
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ===============================
-// GET STAT
-// ===============================
-router.get("/stats/overview", async (req, res) => {
-  try {
-    const stats = await Property.aggregate([
-      {
-        $match: { 
-          status: "available",
-          "location.city": { $ne: null }
-        }
-      },
-      {
-        $facet: {
-          general: [
-            {
-              $group: {
-                _id: null,
-                totalProperties: { $sum: 1 },
-                avgPrice: { $avg: "$price" },
-                avgRating: { $avg: "$ratingsAverage" },
-                totalViews: { $sum: "$views" },
-                maxPrice: { $max: "$price" },
-                minPrice: { $min: "$price" }
-              }
-            }
-          ],
-          byCity: [
-            {
-              $group: {
-                _id: "$location.city",
-                count: { $sum: 1 },
-                avgPrice: { $avg: "$price" }
-              }
-            },
-            {
-              $sort: { count: -1 }
-            }
-          ]
-        }
-      }
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        general: stats[0].general[0] || {},
-        byCity: stats[0].byCity
-      }
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===============================
-// GET SINGLE PROPERTY
-// ===============================
 router.get("/:id", async (req, res) => {
   try {
-
-    const property = await Property.findById(req.params.id)
-      .populate("owner");
+    const property = await Property.findById(req.params.id).populate("owner");
 
     if (!property)
-      return res.status(404).json({
-        success: false,
-        error: "PROPERTY_NOT_FOUND"
-      });
+      return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
 
-    res.json({
-      success: true,
-      data: property
-    });
+    await Property.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
 
+    res.json({ success: true, data: property });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+router.post("/", auth, upload.array("images", 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
+    }
 
-// ===============================
-// CREATE PROPERTY
-// ===============================
-router.post(
-  "/",
-  auth,
-  upload.array("images", 10),
-  async (req, res) => {
+    const uploadedImages = [];
 
-    try {
+    for (const file of req.files) {
+      const result = await cloudinary.uploader.upload(
+        `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+        { folder: "properties" }
+      );
+      uploadedImages.push(result.secure_url);
+    }
 
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: "VALIDATION_ERROR"
-        });
+    const property = new Property({
+      title: req.body.title,
+      type: req.body.type,
+      area: req.body.area,
+      rooms: req.body.rooms,
+      bathrooms: req.body.bathrooms,
+      floor: req.body.floor,
+      description: req.body.description,
+      amenities: req.body.amenities,
+      location: {
+        address: req.body.address,
+        city: req.body.city,
+        state: req.body.state,
+        country: req.body.country
+      },
+      price: req.body.price,
+      deposit: req.body.deposit,
+      availability_date: req.body.availability_date,
+      rental_duration: req.body.rental_duration,
+      contact: req.body.contact,
+      images: uploadedImages,
+      owner: req.user.id,
+      status: "pending_review"
+    });
+
+    await property.save();
+
+    const count = await Property.countDocuments({ owner: req.user.id });
+
+    if (count === 1) {
+      await Notification.create({
+        user: property.owner,
+        title: "Your first post is here",
+        message: "you have created your first post , Ecrili is always with you",
+        type: "review"
+      });
+    } else {
+      await Notification.create({
+        user: property.owner,
+        title: "Your post is here",
+        message: "your post have been created , Ecrili is always with you",
+        type: "review"
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Property created successfully",
+      data: {
+        id: property._id,
+        status: property.status,
+        images: uploadedImages
       }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-      const uploadedImages = [];
+router.put("/:id", auth, upload.array("images", 10), async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
 
+    if (!property) {
+      return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
+    }
+
+    if (property.owner.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
+    }
+
+    let uploadedImages = property.images;
+
+    if (req.files && req.files.length > 0) {
+      uploadedImages = [];
       for (const file of req.files) {
         const result = await cloudinary.uploader.upload(
           `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
           { folder: "properties" }
         );
-
         uploadedImages.push(result.secure_url);
       }
-
-      const property = new Property({
-        title: req.body.title,
-        type: req.body.type,
-        area: req.body.area,
-        rooms: req.body.rooms,
-        bathrooms: req.body.bathrooms,
-        floor: req.body.floor,
-        description: req.body.description,
-        amenities: req.body.amenities,
-        location: {
-          address: req.body.address,
-          city: req.body.city,
-          state: req.body.state,
-          country: req.body.country
-        },
-        price: req.body.price,
-        deposit: req.body.deposit,
-        availability_date: req.body.availability_date,
-        rental_duration: req.body.rental_duration,
-        contact: req.body.contact,
-        images: uploadedImages,
-        owner: req.user.id,
-        status: "pending_review"
-      });
-
-      await property.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Property created successfully",
-        data: {
-          id: property._id,
-          status: property.status,
-          images: uploadedImages
-        }
-      });
-
-    } catch (err) {
-      res.status(500).json({ error: err.message });
     }
 
-  }
-);
+    const updatedFields = {
+      title: req.body.title,
+      type: req.body.type,
+      area: req.body.area,
+      rooms: req.body.rooms,
+      bathrooms: req.body.bathrooms,
+      floor: req.body.floor,
+      description: req.body.description,
+      amenities: req.body.amenities,
+      price: req.body.price,
+      deposit: req.body.deposit,
+      availability_date: req.body.availability_date,
+      rental_duration: req.body.rental_duration,
+      contact: req.body.contact,
+      images: uploadedImages
+    };
 
-// ===============================
-// UPDATE PROPERTY
-// ===============================
-router.put(
-  "/:id",
-  auth,
-  upload.array("images", 10),
-  async (req, res) => {
-    try {
+    Object.keys(updatedFields).forEach(
+      key => updatedFields[key] === undefined && delete updatedFields[key]
+    );
 
-      const property = await Property.findById(req.params.id);
-
-      if (!property) {
-        return res.status(404).json({
-          success: false,
-          error: "PROPERTY_NOT_FOUND"
-        });
-      }
-
-      if (property.owner.toString() !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: "NOT_AUTHORIZED"
-        });
-      }
-
-      let uploadedImages = property.images;
-
-      if (req.files && req.files.length > 0) {
-        uploadedImages = [];
-
-        for (const file of req.files) {
-          const result = await cloudinary.uploader.upload(
-            `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
-            { folder: "properties" }
-          );
-
-          uploadedImages.push(result.secure_url);
-        }
-      }
-
-      const updatedFields = {
-        title: req.body.title,
-        type: req.body.type,
-        area: req.body.area,
-        rooms: req.body.rooms,
-        bathrooms: req.body.bathrooms,
-        floor: req.body.floor,
-        description: req.body.description,
-        amenities: req.body.amenities,
-        price: req.body.price,
-        deposit: req.body.deposit,
-        availability_date: req.body.availability_date,
-        rental_duration: req.body.rental_duration,
-        contact: req.body.contact,
-        images: uploadedImages
+    if (req.body.city || req.body.address || req.body.state || req.body.country) {
+      property.location = {
+        address: req.body.address || property.location.address,
+        city: req.body.city || property.location.city,
+        state: req.body.state || property.location.state,
+        country: req.body.country || property.location.country
       };
-
-      Object.keys(updatedFields).forEach(
-        key => updatedFields[key] === undefined && delete updatedFields[key]
-      );
-
-      if (req.body.city || req.body.address || req.body.state || req.body.country) {
-        property.location = {
-          address: req.body.address || property.location.address,
-          city: req.body.city || property.location.city,
-          state: req.body.state || property.location.state,
-          country: req.body.country || property.location.country
-        };
-      }
-
-      Object.assign(property, updatedFields);
-
-      await property.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Property updated successfully",
-        data: property
-      });
-
-    } catch (err) {
-      res.status(500).json({ error: err.message });
     }
+
+    Object.assign(property, updatedFields);
+    await property.save();
+
+    await Notification.create({
+      user: property.owner,
+      title: "Your post is here",
+      message: "your post have been updated , Ecrili is always with you",
+      type: "review"
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Property updated successfully",
+      data: property
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-);
+});
 
-// ===============================
-// Delete PROPERTY
-// ===============================
-router.delete(
-  "/:id",
-  auth,
-  upload.array("images", 10),
-  async (req, res) => {
-    try {
-
-      const property = await Property.findById(req.params.id);
-
-      if (!property) {
-        return res.status(404).json({
-          success: false,
-          error: "PROPERTY_NOT_FOUND"
-        });
-      }
-
-      if (property.owner.toString() !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: "NOT_AUTHORIZED"
-        });
-      }
-      await Property.findByIdAndDelete(req.params.id);
-      return res.json({
-        success: true,
-        message: "Property deleted successfully",
-      });
-
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  }
-);
-
-// ===============================
-// GET REVIEWS
-// ===============================
-router.get("/:id/reviews", async (req, res) => {
-
+router.delete("/:id", auth, async (req, res) => {
   try {
+    const property = await Property.findById(req.params.id);
 
+    if (!property) {
+      return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
+    }
+
+    if (property.owner.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
+    }
+
+    await Property.findByIdAndDelete(req.params.id);
+
+    await Notification.create({
+      user: property.owner,
+      title: "Your post is not here anymore",
+      message: "your post have been deleted , Ecrili is always with you",
+      type: "review"
+    });
+
+    return res.json({ success: true, message: "Property deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/:id/reviews", async (req, res) => {
+  try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 5;
 
@@ -407,30 +343,20 @@ router.get("/:id/reviews", async (req, res) => {
         }
       }
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-
 });
 
-// ===============================
-// ADD REVIEW
-// ===============================
 router.post("/:id/reviews", auth, async (req, res) => {
-
   try {
-
     const already = await Review.findOne({
       property: req.params.id,
       author: req.user.id
     });
 
     if (already) {
-      return res.status(409).json({
-        success: false,
-        error: "ALREADY_REVIEWED"
-      });
+      return res.status(409).json({ success: false, error: "ALREADY_REVIEWED" });
     }
 
     const review = new Review({
@@ -441,58 +367,75 @@ router.post("/:id/reviews", auth, async (req, res) => {
     });
 
     await review.save();
+    const populatedReview = await review.populate("author", "name");
+    const property = await Property.findById(req.params.id);
+
+    await Notification.create({
+      user: review.author,
+      title: "Your review is here",
+      message: "your review have been sumbeted , Ecrili is always with you",
+      type: "review"
+    });
+
+    await Notification.create({
+      user: property.owner,
+      title: "Someone review is here",
+      message: `${populatedReview.author.name} give you a review, Ecrili is always with you`,
+      type: "review"
+    });
 
     res.json({
       success: true,
       message: "Review submitted successfully",
       data: review
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-
 });
 
-// ===============================
-// PUT REVIEW
-// ===============================
 router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
   try {
     const review = await Review.findById(req.params.reviewID);
 
     if (!review) {
-      return res.status(404).json({
-        success: false,
-        error: "REVIEW_NOT_FOUND",
-      });
+      return res.status(404).json({ success: false, error: "REVIEW_NOT_FOUND" });
     }
 
     if (review.property.toString() !== req.params.id) {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_PROPERTY_REVIEW",
-      });
+      return res.status(400).json({ success: false, error: "INVALID_PROPERTY_REVIEW" });
     }
 
     if (review.author.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: "NOT_AUTHORIZED",
-      });
+      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
     }
 
     review.rating = req.body.rating ?? review.rating;
     review.comment = req.body.comment ?? review.comment;
 
     await review.save();
+    const populatedReview = await review.populate("author", "name");
+    const property = await Property.findById(req.params.id);
+
+    await Notification.create({
+      user: review.author,
+      title: "Your review is here",
+      message: "your review have been updated , Ecrili is always with you",
+      type: "review"
+    });
+
+    await Notification.create({
+      user: property.owner,
+      title: "Someone review is here",
+      message: `${populatedReview.author.name} updated his review, Ecrili is always with you`,
+      type: "review"
+    });
 
     res.status(200).json({
       success: true,
       message: "Review updated successfully",
-      data: review,
+      data: review
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -521,49 +464,45 @@ router.post("/add_to_favoris", async (req, res) => {
 
 });
 
-// ===============================
-// Delete review
-// ===============================
-router.delete(
-  "/:id/:reviewID/reviews",
-  auth,
-  async (req, res) => {
-    try {
+router.delete("/:id/:reviewID/reviews", auth, async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.reviewID);
 
-      const review = await Review.findById(req.params.reviewID);
-
-      if (!review) {
-        return res.status(404).json({
-          success: false,
-          error: "REVIEW_NOT_FOUND",
-        });
-      }
-
-      if (review.property.toString() !== req.params.id) {
-        return res.status(400).json({
-          success: false,
-          error: "INVALID_PROPERTY_REVIEW",
-        });
-      }
-
-      if (review.author.toString() !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: "NOT_AUTHORIZED",
-        });
-      }
-
-      await review.deleteOne();
-
-      res.status(200).json({
-        success: true,
-        message: "Review deleted successfully",
-      });
-
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    if (!review) {
+      return res.status(404).json({ success: false, error: "REVIEW_NOT_FOUND" });
     }
+
+    if (review.property.toString() !== req.params.id) {
+      return res.status(400).json({ success: false, error: "INVALID_PROPERTY_REVIEW" });
+    }
+
+    if (review.author.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
+    }
+
+    const populatedReview = await review.populate("author", "name");
+    const property = await Property.findById(req.params.id);
+
+    await review.deleteOne();
+
+    await Notification.create({
+      user: review.author,
+      title: "Your review is not here anymore",
+      message: "your review have been deleted , Ecrili is always with you",
+      type: "review"
+    });
+
+    await Notification.create({
+      user: property.owner,
+      title: "Someone review is not here anymore",
+      message: `${populatedReview.author.name} deleted his review, Ecrili is always with you`,
+      type: "review"
+    });
+
+    res.status(200).json({ success: true, message: "Review deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-);
+});
 
 module.exports = router;

@@ -4,17 +4,16 @@ const Schema = mongoose.Schema;
 const UserSchema =new Schema ({
     name : String,
     famillyname:String,
-    username:String,
     email:String,
     dateOfBirth:String,
     password:String,
     phone:String, 
-    images: [
+    images: 
         {
           url: String,
           public_id: String
         }
-      ],
+      ,
     isLessor:Boolean,
     verified : Boolean,
     savedProperties: [
