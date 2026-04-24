@@ -1,13 +1,6 @@
 const mongoose = require("mongoose");
 
-<<<<<<< HEAD
-const PropertySchema = new mongoose.Schema(
-{
-  title: {
-    type: String,
-    required: true
-=======
-const propertySchema = new Schema(
+const propertySchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -15,190 +8,228 @@ const propertySchema = new Schema(
       trim: true,
     },
 
-    description: {
+    type: {
       type: String,
-      required: true,
+      enum: ["apartment", "villa", "studio", "house"],
     },
 
-    images: [
+    area: {
+      type: Number,
+    },
+
+    rooms: {
+      type: Number,
+    },
+
+    bathrooms: {
+      type: Number,
+    },
+
+    floor: Number,
+
+    description: {
+      type: String,
+    },
+
+    amenities: [
       {
-        url: String,
-        public_id: String
+        type: String,
+        enum: [
+          "wifi",
+          "parking",
+          "ac",
+          "elevator",
+          "balcony",
+          "furnished",
+          "security",
+          "garden"
+        ]
       }
     ],
 
-    category: {
-      type: String,
+    
+    specifications: {
+      bedrooms: {
+        type: Number,
+        default: 0,
+        description: "Number of bedrooms"
+      },
+      bathrooms: {
+        type: Number,
+        default: 0,
+        description: "Number of bathrooms"
+      },
+      area: {
+        type: Number,
+        default: 0,
+        description: "Area in square meters"
+      },
+      builtIn: {
+        type: Number,
+        default: null,
+        description: "Year built (e.g., 2019)"
+      },
+      parking: {
+        type: Boolean,
+        default: false,
+        description: "Has parking/garage"
+      },
+      internet: {
+        type: Boolean,
+        default: false,
+        description: "Has fiber optic internet"
+      },
+      available: {
+        type: String,
+        default: "Immediately",
+        enum: ["Immediately", "Within a week", "Within a month", "Custom date"],
+        description: "Availability status"
+      },
+      security: {
+        type: Boolean,
+        default: false,
+        description: "Has 24/7 security/CCTV"
+      },
+      furnished: {
+        type: Boolean,
+        default: false,
+        description: "Is furnished"
+      },
+      petFriendly: {
+        type: Boolean,
+        default: false,
+        description: "Pets allowed"
+      },
+      smookingAllowed: {
+        type: Boolean,
+        default: false,
+        description: "Smoking allowed"
+      },
+      heating: {
+        type: Boolean,
+        default: false,
+        description: "Has heating system"
+      },
+      cooling: {
+        type: Boolean,
+        default: false,
+        description: "Has air conditioning"
+      },
+      washer: {
+        type: Boolean,
+        default: false,
+        description: "Has washing machine"
+      },
+      dryer: {
+        type: Boolean,
+        default: false,
+        description: "Has dryer"
+      },
+      dishwasher: {
+        type: Boolean,
+        default: false,
+        description: "Has dishwasher"
+      },
+      balcony: {
+        type: Boolean,
+        default: false,
+        description: "Has balcony"
+      },
+      garden: {
+        type: Boolean,
+        default: false,
+        description: "Has garden"
+      },
+      pool: {
+        type: Boolean,
+        default: false,
+        description: "Has swimming pool"
+      },
+      gym: {
+        type: Boolean,
+        default: false,
+        description: "Has gym"
+      },
+      elevator: {
+        type: Boolean,
+        default: false,
+        description: "Has elevator"
+      },
+      wheelchairAccess: {
+        type: Boolean,
+        default: false,
+        description: "Wheelchair accessible"
+      }
     },
 
-    characteristics: {
-      type: String,
+    location: {
+      address: String,
+      city: String,
+      state: String,
+      country: {
+        type: String,
+        default: "Algeria"
+      },
+      lat: Number,
+      lng: Number
     },
 
     price: {
       type: Number,
-      required: true,
     },
-    favoris: [
-   {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Post"
-   }
-],
 
-    rating: {
+    deposit: {
       type: Number,
-      default: 0,
+    },
+
+    availability_date: {
+      type: Date,
+    },
+
+    rental_duration: {
+      type: String,
+      enum: ["long_term", "short_term", "flexible"],
+    },
+
+    images: [String],
+
+    contact: {
+      owner_name: String,
+      phone: String,
+      second_phone: String,
+      show_phone: {
+        type: Boolean,
+        default: true
+      }
     },
 
     owner: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
     },
 
-    isEmpty: {
-      type: Boolean,
-      default: true,
-    },
-
-    numberOfRooms: {
-      type: Number,
-      required: true,
-    },
-
-    location: {
-      type: String,
-      required: true,
-    },
-
-    locationGoogle: {
-      type: String,
-    },
     status: {
       type: String,
-      enum: ["available", "rented", "hidden"],
-      default: "available"
+      enum: ["pending_review", "available", "rented", "unavailable"],
+      default: "pending_review"
     },
->>>>>>> 62a1163 (added new feature / fixed bug)
-  },
 
-  type: {
-    type: String,
-    enum: ["apartment","villa","studio","house"],
-    
-  },
-
-  area: {
-    type: Number,
-    
-  },
-
-  rooms: {
-    type: Number,
-   
-  },
-
-  bathrooms: {
-    type: Number,
-    
-  },
-
-  floor: Number,
-
-  description: {
-    type: String,
-   
-  },
-
-  amenities: [
-    {
-      type: String,
-      enum: [
-        "wifi",
-        "parking",
-        "ac",
-        "elevator",
-        "balcony",
-        "furnished",
-        "security",
-        "garden"
-      ]
-    }
-  ],
-
-  location: {
-    address: String,
-    city: String,
-    state: String,
-    country: {
-      type: String,
-      default: "Algeria"
+    ratingsAverage: {
+      type: Number,
+      default: 0
     },
-    lat: Number,
-    lng: Number
-  },
 
-  price: {
-    type: Number,
-    
-  },
+    ratingsQuantity: {
+      type: Number,
+      default: 0
+    },
 
-  deposit: {
-    type: Number,
-    
-  },
-
-  availability_date: {
-    type: Date,
-    
-  },
-
-  rental_duration: {
-    type: String,
-    enum: ["long_term","short_term","flexible"],
-    
-  },
-
-  images: [String],
-
-  contact: {
-    owner_name: String,
-    phone: String,
-    second_phone: String,
-    show_phone: {
-      type: Boolean,
-      default: true
+    views: {
+      type: Number,
+      default: 0
     }
   },
-
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
-
-  status: {
-    type: String,
-    enum: ["pending_review","available","rented","unavailable"],
-    default: "pending_review"
-  },
-  ratingsAverage: {
-    type: Number,
-    default: 0
-  },
-  
-  ratingsQuantity: {
-    type: Number,
-    default: 0
-  },
-  
-  views: {
-    type: Number,
-    default: 0
-  }
-
-},
-{ timestamps: true }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("Property", PropertySchema);
+module.exports = mongoose.model("Property", propertySchema);

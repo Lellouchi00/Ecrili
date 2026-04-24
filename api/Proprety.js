@@ -2,10 +2,14 @@ const router = require("express").Router();
 const Property = require("../models/Propreties");
 const Review = require("../models/review");
 const Notification = require("../models/notification");
+const User = require("../models/User");
 const auth = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 const upload = require("../middleware/upload");
 
+//---------------------------
+// Get All Properties
+//---------------------------
 router.get("/all", async (req, res) => {
   try {
     const properties = await Property.find();
@@ -15,6 +19,9 @@ router.get("/all", async (req, res) => {
   }
 });
 
+//---------------------------
+// Get Properties By Owner
+//---------------------------
 router.get('/allByOwner', auth, async (req, res) => {
   try {
     const userProperties = await Property.find({ owner: req.user.id });
@@ -24,6 +31,9 @@ router.get('/allByOwner', auth, async (req, res) => {
   }
 });
 
+//---------------------------
+// Get Properties Stats Overview
+//---------------------------
 router.get("/stats/overview", async (req, res) => {
   try {
     const stats = await Property.aggregate([
@@ -74,12 +84,23 @@ router.get("/stats/overview", async (req, res) => {
   }
 });
 
+//---------------------------
+// Search Properties With Filters
+//---------------------------
 router.get("/", async (req, res) => {
   try {
     const { location, room_type, min_price, max_price, page, limit, sort } = req.query;
 
     if (!location || !room_type || !min_price || !max_price || !page || !limit) {
       return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
+    }
+
+    if (isNaN(Number(min_price)) || isNaN(Number(max_price)) || isNaN(Number(page)) || isNaN(Number(limit))) {
+      return res.status(400).json({ success: false, error: "INVALID_NUMBERS" });
+    }
+
+    if (Number(min_price) > Number(max_price)) {
+      return res.status(400).json({ success: false, error: "INVALID_PRICE_RANGE" });
     }
 
     const query = {
@@ -114,10 +135,7 @@ router.get("/", async (req, res) => {
         pagination: {
           current_page: pageNumber,
           total_pages: Math.ceil(total / limitNumber),
-          total_items: total,
-          items_per_page: limitNumber,
-          has_next: pageNumber * limitNumber < total,
-          has_prev: pageNumber > 1
+          total_items: total
         }
       }
     });
@@ -126,12 +144,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+//---------------------------
+// Get Single Property By ID
+//---------------------------
 router.get("/:id", async (req, res) => {
   try {
     const property = await Property.findById(req.params.id).populate("owner");
 
-    if (!property)
+    if (!property) {
       return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
+    }
 
     await Property.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
 
@@ -147,8 +169,10 @@ router.post("/", auth, upload.array("images", 10), async (req, res) => {
       return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
     }
 
-    const uploadedImages = [];
+    const requiredFields = ['title', 'type', 'city', 'price'];
+  
 
+    const uploadedImages = [];
     for (const file of req.files) {
       const result = await cloudinary.uploader.upload(
         `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
@@ -160,346 +184,97 @@ router.post("/", auth, upload.array("images", 10), async (req, res) => {
     const property = new Property({
       title: req.body.title,
       type: req.body.type,
-      area: req.body.area,
-      rooms: req.body.rooms,
-      bathrooms: req.body.bathrooms,
-      floor: req.body.floor,
-      description: req.body.description,
-      amenities: req.body.amenities,
+      description: req.body.description || "",
+      area: req.body.area || 0,
+      rooms: req.body.rooms || 0,
+      bathrooms: req.body.bathrooms || 0,
+      floor: req.body.floor || 0,
+      amenities: req.body.amenities || [],
       location: {
-        address: req.body.address,
+        address: req.body.address || "",
         city: req.body.city,
-        state: req.body.state,
-        country: req.body.country
+        state: req.body.state || "",
+        country: req.body.country || "Algeria"
       },
       price: req.body.price,
-      deposit: req.body.deposit,
-      availability_date: req.body.availability_date,
-      rental_duration: req.body.rental_duration,
-      contact: req.body.contact,
+      deposit: req.body.deposit || 0,
+      availability_date: req.body.availability_date || null,
+      rental_duration: req.body.rental_duration || "flexible",
+      contact: {
+        owner_name: req.body.owner_name || "",
+        phone: req.body.phone || "",
+        second_phone: req.body.second_phone || "",
+        show_phone: req.body.show_phone === true || req.body.show_phone === "true"
+      },
       images: uploadedImages,
       owner: req.user.id,
-      status: "pending_review"
+      status: "pending_review",
+      specifications: {
+        bedrooms: req.body.specifications?.bedrooms || req.body.rooms || 0,
+        bathrooms: req.body.specifications?.bathrooms || req.body.bathrooms || 0,
+        area: req.body.specifications?.area || req.body.area || 0,
+        builtIn: req.body.specifications?.builtIn || null,
+        parking: req.body.specifications?.parking === true || req.body.specifications?.parking === "true",
+        internet: req.body.specifications?.internet === true || req.body.specifications?.internet === "true",
+        available: req.body.specifications?.available || "Immediately",
+        security: req.body.specifications?.security === true || req.body.specifications?.security === "true",
+        furnished: req.body.specifications?.furnished === true || req.body.specifications?.furnished === "true",
+        petFriendly: req.body.specifications?.petFriendly === true || req.body.specifications?.petFriendly === "true",
+        smookingAllowed: req.body.specifications?.smookingAllowed === true || req.body.specifications?.smookingAllowed === "true",
+        heating: req.body.specifications?.heating === true || req.body.specifications?.heating === "true",
+        cooling: req.body.specifications?.cooling === true || req.body.specifications?.cooling === "true",
+        washer: req.body.specifications?.washer === true || req.body.specifications?.washer === "true",
+        dryer: req.body.specifications?.dryer === true || req.body.specifications?.dryer === "true",
+        dishwasher: req.body.specifications?.dishwasher === true || req.body.specifications?.dishwasher === "true",
+        balcony: req.body.specifications?.balcony === true || req.body.specifications?.balcony === "true",
+        garden: req.body.specifications?.garden === true || req.body.specifications?.garden === "true",
+        pool: req.body.specifications?.pool === true || req.body.specifications?.pool === "true",
+        gym: req.body.specifications?.gym === true || req.body.specifications?.gym === "true",
+        elevator: req.body.specifications?.elevator === true || req.body.specifications?.elevator === "true",
+        wheelchairAccess: req.body.specifications?.wheelchairAccess === true || req.body.specifications?.wheelchairAccess === "true"
+      }
     });
 
     await property.save();
 
-    const count = await Property.countDocuments({ owner: req.user.id });
-
-    if (count === 1) {
-      await Notification.create({
-        user: property.owner,
-        title: "Your first post is here",
-        message: "you have created your first post , Ecrili is always with you",
-        type: "review"
-      });
-    } else {
-      await Notification.create({
-        user: property.owner,
-        title: "Your post is here",
-        message: "your post have been created , Ecrili is always with you",
-        type: "review"
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      message: "Property created successfully",
-      data: {
-        id: property._id,
-        status: property.status,
-        images: uploadedImages
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id", auth, upload.array("images", 10), async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
-    }
-
-    if (property.owner.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
-    }
-
-    let uploadedImages = property.images;
-
-    if (req.files && req.files.length > 0) {
-      uploadedImages = [];
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(
-          `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
-          { folder: "properties" }
-        );
-        uploadedImages.push(result.secure_url);
-      }
-    }
-
-    const updatedFields = {
-      title: req.body.title,
-      type: req.body.type,
-      area: req.body.area,
-      rooms: req.body.rooms,
-      bathrooms: req.body.bathrooms,
-      floor: req.body.floor,
-      description: req.body.description,
-      amenities: req.body.amenities,
-      price: req.body.price,
-      deposit: req.body.deposit,
-      availability_date: req.body.availability_date,
-      rental_duration: req.body.rental_duration,
-      contact: req.body.contact,
-      images: uploadedImages
-    };
-
-    Object.keys(updatedFields).forEach(
-      key => updatedFields[key] === undefined && delete updatedFields[key]
-    );
-
-    if (req.body.city || req.body.address || req.body.state || req.body.country) {
-      property.location = {
-        address: req.body.address || property.location.address,
-        city: req.body.city || property.location.city,
-        state: req.body.state || property.location.state,
-        country: req.body.country || property.location.country
-      };
-    }
-
-    Object.assign(property, updatedFields);
-    await property.save();
-
     await Notification.create({
       user: property.owner,
-      title: "Your post is here",
-      message: "your post have been updated , Ecrili is always with you",
+      title: "New Property",
+      message: "Property created",
       type: "review"
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Property updated successfully",
-      data: property
-    });
+    res.status(201).json({ success: true, data: property });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+//---------------------------
+// Add To Favorites
+//---------------------------
+router.post("/add_to_favoris", auth, async (req, res) => {
+  const { postId } = req.body;
 
-router.delete("/:id", auth, async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({ success: false, error: "PROPERTY_NOT_FOUND" });
-    }
-
-    if (property.owner.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
-    }
-
-    await Property.findByIdAndDelete(req.params.id);
-
-    await Notification.create({
-      user: property.owner,
-      title: "Your post is not here anymore",
-      message: "your post have been deleted , Ecrili is always with you",
-      type: "review"
-    });
-
-    return res.json({ success: true, message: "Property deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (!postId) {
+    return res.status(400).json({ success: false });
   }
-});
 
-router.get("/:id/reviews", async (req, res) => {
   try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 5;
+    const user = await User.findById(req.user.id);
+    const property = await Property.findById(postId);
 
-    const reviews = await Review.find({ property: req.params.id })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .populate("author", "name avatar");
-
-    const total = await Review.countDocuments({ property: req.params.id });
-
-    res.json({
-      success: true,
-      data: {
-        reviews,
-        pagination: {
-          current_page: page,
-          total_pages: Math.ceil(total / limit),
-          total_items: total,
-          has_next: page * limit < total,
-          has_prev: page > 1
-        }
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post("/:id/reviews", auth, async (req, res) => {
-  try {
-    const already = await Review.findOne({
-      property: req.params.id,
-      author: req.user.id
-    });
-
-    if (already) {
-      return res.status(409).json({ success: false, error: "ALREADY_REVIEWED" });
+    if (!user || !property) {
+      return res.status(404).json({ success: false });
     }
 
-    const review = new Review({
-      property: req.params.id,
-      author: req.user.id,
-      rating: req.body.rating,
-      comment: req.body.comment
-    });
-
-    await review.save();
-    const populatedReview = await review.populate("author", "name");
-    const property = await Property.findById(req.params.id);
-
-    await Notification.create({
-      user: review.author,
-      title: "Your review is here",
-      message: "your review have been sumbeted , Ecrili is always with you",
-      type: "review"
-    });
-
-    await Notification.create({
-      user: property.owner,
-      title: "Someone review is here",
-      message: `${populatedReview.author.name} give you a review, Ecrili is always with you`,
-      type: "review"
-    });
-
-    res.json({
-      success: true,
-      message: "Review submitted successfully",
-      data: review
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id/:reviewID/reviews", auth, async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.reviewID);
-
-    if (!review) {
-      return res.status(404).json({ success: false, error: "REVIEW_NOT_FOUND" });
+    if (user.favoris.includes(postId)) {
+      return res.status(400).json({ success: false });
     }
 
-    if (review.property.toString() !== req.params.id) {
-      return res.status(400).json({ success: false, error: "INVALID_PROPERTY_REVIEW" });
-    }
+    user.favoris.push(postId);
+    await user.save();
 
-    if (review.author.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
-    }
-
-    review.rating = req.body.rating ?? review.rating;
-    review.comment = req.body.comment ?? review.comment;
-
-    await review.save();
-    const populatedReview = await review.populate("author", "name");
-    const property = await Property.findById(req.params.id);
-
-    await Notification.create({
-      user: review.author,
-      title: "Your review is here",
-      message: "your review have been updated , Ecrili is always with you",
-      type: "review"
-    });
-
-    await Notification.create({
-      user: property.owner,
-      title: "Someone review is here",
-      message: `${populatedReview.author.name} updated his review, Ecrili is always with you`,
-      type: "review"
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Review updated successfully",
-      data: review
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
- // add favorites posts by the user 
-router.post("/add_to_favoris", async (req, res) => {
-
-   const { userId, postId } = req.body;
-
-   try {
-
-      const user = await User.findById(userId);
-      if (!user) {
-         return res.json({ message: "User not found" });
-      }
-
-      user.favoris.push(postId);
-
-      await user.save();
-
-      res.json({ message: "Post added to favorites" });
-
-   } catch (err) {
-      res.status(500).json({ message: "Server error" });
-   }
-
-});
-
-router.delete("/:id/:reviewID/reviews", auth, async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.reviewID);
-
-    if (!review) {
-      return res.status(404).json({ success: false, error: "REVIEW_NOT_FOUND" });
-    }
-
-    if (review.property.toString() !== req.params.id) {
-      return res.status(400).json({ success: false, error: "INVALID_PROPERTY_REVIEW" });
-    }
-
-    if (review.author.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, error: "NOT_AUTHORIZED" });
-    }
-
-    const populatedReview = await review.populate("author", "name");
-    const property = await Property.findById(req.params.id);
-
-    await review.deleteOne();
-
-    await Notification.create({
-      user: review.author,
-      title: "Your review is not here anymore",
-      message: "your review have been deleted , Ecrili is always with you",
-      type: "review"
-    });
-
-    await Notification.create({
-      user: property.owner,
-      title: "Someone review is not here anymore",
-      message: `${populatedReview.author.name} deleted his review, Ecrili is always with you`,
-      type: "review"
-    });
-
-    res.status(200).json({ success: true, message: "Review deleted successfully" });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
