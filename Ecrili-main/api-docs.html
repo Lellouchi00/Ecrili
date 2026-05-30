@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Documentation — Real Estate Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2230;
+    --accent: #7c6af7;
+    --accent2: #4fd1c5;
+    --accent3: #f6ad55;
+    --danger: #fc8181;
+    --success: #68d391;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Syne', 'Noto Sans Arabic', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,12,16,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .logo {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .logo::before {
+    content: '⬡';
+    font-size: 1.2rem;
+  }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  nav {
+    position: fixed;
+    right: 0;
+    top: 60px;
+    bottom: 0;
+    width: 240px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.5rem 0;
+    z-index: 90;
+  }
+
+  nav::-webkit-scrollbar { width: 4px; }
+  nav::-webkit-scrollbar-track { background: transparent; }
+  nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .nav-section {
+    padding: 0.25rem 1.5rem;
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-top: 1.5rem;
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1.5rem;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.82rem;
+    transition: all 0.15s;
+    border-right: 2px solid transparent;
+  }
+
+  nav a:hover, nav a.active {
+    color: var(--text);
+    background: rgba(124,106,247,0.06);
+    border-right-color: var(--accent);
+  }
+
+  .nav-method {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+  }
+
+  .get { background: rgba(79,209,197,0.15); color: var(--accent2); }
+  .post { background: rgba(124,106,247,0.15); color: var(--accent); }
+  .put { background: rgba(246,173,85,0.15); color: var(--accent3); }
+  .delete { background: rgba(252,129,129,0.15); color: var(--danger); }
+
+  main {
+    margin-right: 240px;
+    padding: 3rem 3rem 6rem;
+    max-width: 960px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero {
+    margin-bottom: 4rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fff 30%, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  .base-url-box {
+    margin-top: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+  }
+
+  .base-url-box .label {
+    color: var(--muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .base-url-box .url { color: var(--accent2); }
+
+  /* Section */
+  .section {
+    margin-bottom: 4rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Endpoint card */
+  .endpoint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .endpoint:hover { border-color: rgba(124,106,247,0.3); }
+
+  .endpoint-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .method-badge {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.25rem 0.65rem;
+    border-radius: 5px;
+    min-width: 52px;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .endpoint-path {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .endpoint-path .param { color: var(--accent3); }
+
+  .endpoint-desc {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .endpoint-body {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 700px) {
+    .endpoint-body { grid-template-columns: 1fr; }
+  }
+
+  .block-label {
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .block-label::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  pre {
+    background: #0d0f15;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+
+  .key { color: var(--accent2); }
+  .val-str { color: #a5f3a5; }
+  .val-num { color: var(--accent3); }
+  .val-bool { color: #f9a8d4; }
+  .val-null { color: var(--muted); }
+  .comment { color: var(--muted); font-style: italic; }
+
+  .params-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  .params-table th {
+    text-align: right;
+    padding: 0.4rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .params-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(30,34,48,0.5);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .params-table tr:last-child td { border-bottom: none; }
+
+  .param-name {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--accent2);
+  }
+
+  .param-type {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent3);
+  }
+
+  .required-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    background: rgba(252,129,129,0.15);
+    color: var(--danger);
+    margin-right: 0.3rem;
+  }
+
+  .optional-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    background: rgba(100,116,139,0.15);
+    color: var(--muted);
+    margin-right: 0.3rem;
+  }
+
+  .pagination-note {
+    margin-top: 1rem;
+    grid-column: 1 / -1;
+    background: rgba(79,209,197,0.06);
+    border: 1px solid rgba(79,209,197,0.2);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .pagination-note::before { content: '⟳'; font-size: 1rem; flex-shrink: 0; }
+
+  .full-width { grid-column: 1 / -1; }
+
+  /* Anchor targets */
+  [id] { scroll-margin-top: 80px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Real Estate API</div>
+  <div class="header-meta">v1.0 · REST · JSON</div>
+</header>
+
+<nav>
+  <div class="nav-section">Dashboard</div>
+  <a href="#stats"><span class="nav-method get">GET</span> Stats</a>
+
+  <div class="nav-section">Listings</div>
+  <a href="#get-listings"><span class="nav-method get">GET</span> My Listings</a>
+  <a href="#create-listing"><span class="nav-method post">POST</span> Create Listing</a>
+  <a href="#get-listing-edit"><span class="nav-method get">GET</span> Get Listing</a>
+  <a href="#edit-step1"><span class="nav-method put">PUT</span> Edit Step 1</a>
+  <a href="#edit-step2"><span class="nav-method put">PUT</span> Edit Step 2</a>
+  <a href="#edit-step3"><span class="nav-method put">PUT</span> Edit Step 3</a>
+
+  <div class="nav-section">Public</div>
+  <a href="#platform-stats"><span class="nav-method get">GET</span> Platform Stats</a>
+  <a href="#get-public-listings"><span class="nav-method get">GET</span> Browse Listings</a>
+
+  <div class="nav-section">Enums &amp; Types</div>
+  <a href="#enums-types">Property Types</a>
+  <a href="#enums-amenities">Amenities</a>
+  <a href="#enums-sort">Sort &amp; Categories</a>
+
+  <div class="nav-section">Favorites</div>
+  <a href="#add-favorite"><span class="nav-method post">POST</span> Add Favorite</a>
+  <a href="#remove-favorite"><span class="nav-method delete">DELETE</span> Remove Favorite</a>
+  <a href="#get-favorites"><span class="nav-method get">GET</span> My Favorites</a>
+
+  <div class="nav-section">Reviews</div>
+  <a href="#get-listing-titles"><span class="nav-method get">GET</span> Listing Titles</a>
+  <a href="#get-rating-summary"><span class="nav-method get">GET</span> Rating Summary</a>
+  <a href="#post-review"><span class="nav-method post">POST</span> Submit Review</a>
+  <a href="#post-rating"><span class="nav-method post">POST</span> Submit Rating</a>
+  <a href="#get-reviews"><span class="nav-method get">GET</span> Listing Reviews</a>
+</nav>
+
+<main>
+
+  <div class="hero">
+    <h1>API<br>Documentation</h1>
+    <p>وثائق نقاط النهاية الخاصة بمنصة العقارات — تشمل جلب الإحصائيات، إدارة المنشورات، وعرض التعليقات مع الترقيم.</p>
+    <div class="base-url-box">
+      <span class="label">Base URL</span>
+      <span class="url">https://api.example.com/v1</span>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="section" id="dashboard">
+    <div class="section-header">
+      <h2>Dashboard</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="endpoint" id="stats">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/owner/stats</span>
+        <span class="endpoint-desc">إحصائيات لوحة التحكم</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// No body required</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"activeListings"</span>: <span class="val-num">1</span>,
+  <span class="key">"totalViews"</span>: <span class="val-num">8432</span>,
+  <span class="key">"pendingRequests"</span>: <span class="val-num">1</span>,
+  <span class="key">"averageRating"</span>: <span class="val-num">4.6</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LISTINGS ===== -->
+  <div class="section" id="listings">
+    <div class="section-header">
+      <h2>Listings</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- GET MY LISTINGS -->
+    <div class="endpoint" id="get-listings">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/owner/listings</span>
+        <span class="endpoint-desc">قائمة منشوراتي مع الفلترة والترقيم</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Query Params</div>
+          <table class="params-table">
+            <thead><tr><th>المفتاح</th><th>النوع</th><th>الوصف</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">status</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>all | active | pending | rented</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">sort</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>newest | oldest | price_asc | price_desc</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">page</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>رقم الصفحة (افتراضي: 1)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">limit</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>عدد النتائج لكل صفحة (افتراضي: 10)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination-note">
+            هذه النقطة تدعم الترقيم (Pagination) عبر <strong>page</strong> و <strong>limit</strong>. الاستجابة تتضمن metadata للتنقل بين الصفحات.
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"data"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_abc123"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Luxury Penthouse with Sea View"</span>,
+      <span class="key">"status"</span>: <span class="val-str">"active"</span>,
+      <span class="key">"location"</span>: <span class="val-str">"Downtown Marina"</span>,
+      <span class="key">"price"</span>: <span class="val-num">4500</span>,
+      <span class="key">"currency"</span>: <span class="val-str">"USD"</span>,
+      <span class="key">"rooms"</span>: <span class="val-num">3</span>,
+      <span class="key">"bathrooms"</span>: <span class="val-num">2</span>,
+      <span class="key">"area"</span>: <span class="val-num">145</span>,
+      <span class="key">"mainPhoto"</span>: <span class="val-str">"https://..."</span>,
+      <span class="key">"createdAt"</span>: <span class="val-str">"2025-03-25T10:00:00Z"</span>
+    }
+  ],
+  <span class="key">"pagination"</span>: {
+    <span class="key">"page"</span>: <span class="val-num">1</span>,
+    <span class="key">"limit"</span>: <span class="val-num">10</span>,
+    <span class="key">"total"</span>: <span class="val-num">4</span>,
+    <span class="key">"totalPages"</span>: <span class="val-num">1</span>,
+    <span class="key">"hasNext"</span>: <span class="val-bool">false</span>,
+    <span class="key">"hasPrev"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE LISTING - Step 1 -->
+    <div class="endpoint" id="create-listing">
+      <div class="endpoint-header">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-path">/listings</span>
+        <span class="endpoint-desc">إنشاء منشور جديد (3 خطوات)</span>
+      </div>
+      <div class="endpoint-body">
+
+        <div class="full-width" style="margin-bottom:0.5rem">
+          <div class="block-label">Step 1 — Basic Information</div>
+        </div>
+
+        <div>
+          <div class="block-label">Request Body</div>
+          <pre>{
+  <span class="key">"title"</span>: <span class="val-str">"gfgfg"</span>,          <span class="comment">// required</span>
+  <span class="key">"type"</span>: <span class="val-str">"apartment"</span>,  <span class="comment">// apartment|house|studio|villa</span>
+  <span class="key">"area"</span>: <span class="val-num">1122</span>,
+  <span class="key">"floor"</span>: <span class="val-num">1</span>,
+  <span class="key">"rooms"</span>: <span class="val-num">2</span>,
+  <span class="key">"description"</span>: <span class="val-str">"..."</span>,
+  <span class="key">"amenities"</span>: [
+    <span class="val-str">"wifi"</span>, <span class="val-str">"parking"</span>,
+    <span class="val-str">"ac"</span>, <span class="val-str">"balcony"</span>, <span class="val-str">"security"</span>
+  ]
+}</pre>
+        </div>
+        <div>
+          <div class="block-label">Response 201</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"step"</span>: <span class="val-num">1</span>,
+  <span class="key">"status"</span>: <span class="val-str">"draft"</span>,
+  <span class="key">"message"</span>: <span class="val-str">"Step 1 saved"</span>
+}</pre>
+        </div>
+
+        <div class="full-width" style="border-top: 1px solid var(--border); padding-top: 1.2rem; margin-top: 0.5rem;">
+          <div class="block-label">Step 2 — Photos & Location</div>
+        </div>
+
+        <div>
+          <div class="block-label">Request  <span style="color:var(--accent3);font-family:var(--mono);font-size:0.7rem">multipart/form-data</span></div>
+          <pre><span class="comment">// Path param:</span>
+<span class="key">listingId</span> = <span class="val-str">"listing_xyz789"</span>
+
+<span class="comment">// Form fields:</span>
+<span class="key">"photos"</span>: File[]     <span class="comment">// JPG/PNG, max 10</span>
+<span class="key">"city"</span>: <span class="val-str">"Algiers"</span>
+<span class="key">"district"</span>: <span class="val-str">"Bab Ezzouar"</span>
+<span class="key">"street"</span>: <span class="val-str">"Rue des Frères"</span>
+<span class="key">"lat"</span>: <span class="val-num">36.754482</span>
+<span class="key">"lng"</span>: <span class="val-num">3.059166</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"step"</span>: <span class="val-num">2</span>,
+  <span class="key">"photos"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"photo_001"</span>,
+      <span class="key">"url"</span>: <span class="val-str">"https://..."</span>,
+      <span class="key">"isMain"</span>: <span class="val-bool">true</span>
+    }
+  ],
+  <span class="key">"location"</span>: {
+    <span class="key">"city"</span>: <span class="val-str">"Algiers"</span>,
+    <span class="key">"district"</span>: <span class="val-str">"Bab Ezzouar"</span>,
+    <span class="key">"lat"</span>: <span class="val-num">36.754482</span>,
+    <span class="key">"lng"</span>: <span class="val-num">3.059166</span>
+  }
+}</pre>
+        </div>
+
+        <div class="full-width" style="border-top: 1px solid var(--border); padding-top: 1.2rem; margin-top: 0.5rem;">
+          <div class="block-label">Step 3 — Pricing & Confirm</div>
+        </div>
+
+        <div>
+          <div class="block-label">Request Body</div>
+          <pre>{
+  <span class="key">"pricingType"</span>: <span class="val-str">"monthly"</span>,   <span class="comment">// monthly|daily</span>
+  <span class="key">"rent"</span>: <span class="val-num">75000</span>,
+  <span class="key">"deposit"</span>: <span class="val-num">150000</span>,
+  <span class="key">"availabilityDate"</span>: <span class="val-str">"2025-04-01"</span>,
+  <span class="key">"rentalDuration"</span>: <span class="val-str">"long_term"</span>,
+  <span class="comment">// long_term | short_term | flexible</span>
+  <span class="key">"contact"</span>: {
+    <span class="key">"ownerName"</span>: <span class="val-str">"Julian Smith"</span>,
+    <span class="key">"phone"</span>: <span class="val-str">"+213 XXX XX XX XX"</span>,
+    <span class="key">"secondPhone"</span>: <span class="val-null">null</span>,       <span class="comment">// optional</span>
+    <span class="key">"showPhonePublicly"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+        <div>
+          <div class="block-label">Response 201</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"status"</span>: <span class="val-str">"pending"</span>,
+  <span class="key">"message"</span>: <span class="val-str">"Listing submitted for review"</span>,
+  <span class="key">"estimatedReviewTime"</span>: <span class="val-str">"24-48 hours"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET LISTING FOR EDIT -->
+    <div class="endpoint" id="get-listing-edit">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span></span>
+        <span class="endpoint-desc">جلب بيانات المنشور الكاملة لتعبئة نموذج التعديل</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;</pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"id"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"title"</span>: <span class="val-str">"Luxury Villa"</span>,
+  <span class="key">"type"</span>: <span class="val-str">"villa"</span>,
+  <span class="key">"area"</span>: <span class="val-num">320</span>,
+  <span class="key">"floor"</span>: <span class="val-num">1</span>,
+  <span class="key">"rooms"</span>: <span class="val-num">4</span>,
+  <span class="key">"description"</span>: <span class="val-str">"..."</span>,
+  <span class="key">"amenities"</span>: [<span class="val-str">"wifi"</span>, <span class="val-str">"parking"</span>],
+  <span class="key">"photos"</span>: [
+    { <span class="key">"id"</span>: <span class="val-str">"photo_001"</span>, <span class="key">"url"</span>: <span class="val-str">"https://..."</span>, <span class="key">"isMain"</span>: <span class="val-bool">true</span> }
+  ],
+  <span class="key">"location"</span>: {
+    <span class="key">"city"</span>: <span class="val-str">"Algiers"</span>,
+    <span class="key">"district"</span>: <span class="val-str">"Bab Ezzouar"</span>,
+    <span class="key">"street"</span>: <span class="val-str">"Rue des Frères"</span>,
+    <span class="key">"lat"</span>: <span class="val-num">36.754482</span>,
+    <span class="key">"lng"</span>: <span class="val-num">3.059166</span>
+  },
+  <span class="key">"pricingType"</span>: <span class="val-str">"monthly"</span>,
+  <span class="key">"rent"</span>: <span class="val-num">75000</span>,
+  <span class="key">"deposit"</span>: <span class="val-num">150000</span>,
+  <span class="key">"availabilityDate"</span>: <span class="val-str">"2025-04-01"</span>,
+  <span class="key">"rentalDuration"</span>: <span class="val-str">"long_term"</span>,
+  <span class="key">"contact"</span>: {
+    <span class="key">"ownerName"</span>: <span class="val-str">"Julian Smith"</span>,
+    <span class="key">"phone"</span>: <span class="val-str">"+213 XXX XX XX XX"</span>,
+    <span class="key">"secondPhone"</span>: <span class="val-null">null</span>,
+    <span class="key">"showPhonePublicly"</span>: <span class="val-bool">false</span>
+  },
+  <span class="key">"status"</span>: <span class="val-str">"active"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT STEP 1 -->
+    <div class="endpoint" id="edit-step1">
+      <div class="endpoint-header">
+        <span class="method-badge put">PUT</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/basic-info</span>
+        <span class="endpoint-desc">تعديل Step 1 — Basic Information</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request Body</div>
+          <pre>{
+  <span class="key">"title"</span>: <span class="val-str">"Modern Luxury Apartment"</span>,
+  <span class="key">"type"</span>: <span class="val-str">"apartment"</span>,
+  <span class="key">"area"</span>: <span class="val-num">1122</span>,
+  <span class="key">"floor"</span>: <span class="val-num">1</span>,
+  <span class="key">"rooms"</span>: <span class="val-num">2</span>,
+  <span class="key">"description"</span>: <span class="val-str">"..."</span>,
+  <span class="key">"amenities"</span>: [<span class="val-str">"wifi"</span>, <span class="val-str">"ac"</span>, <span class="val-str">"security"</span>]
+}</pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"step"</span>: <span class="val-num">1</span>,
+  <span class="key">"updated"</span>: <span class="val-bool">true</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT STEP 2 -->
+    <div class="endpoint" id="edit-step2">
+      <div class="endpoint-header">
+        <span class="method-badge put">PUT</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/photos-location</span>
+        <span class="endpoint-desc">تعديل Step 2 — Photos &amp; Location</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request  <span style="color:var(--accent3);font-family:var(--mono);font-size:0.7rem">multipart/form-data</span></div>
+          <pre><span class="comment">// الصور الجديدة فقط (اختياري)</span>
+<span class="key">"photos"</span>: File[]
+
+<span class="comment">// IDs الصور المراد حذفها (اختياري)</span>
+<span class="key">"deletePhotoIds"</span>: [<span class="val-str">"photo_001"</span>]
+
+<span class="comment">// بيانات الموقع (اختياري)</span>
+<span class="key">"city"</span>: <span class="val-str">"Algiers"</span>
+<span class="key">"district"</span>: <span class="val-str">"Bab Ezzouar"</span>
+<span class="key">"street"</span>: <span class="val-str">"Rue des Frères"</span>
+<span class="key">"lat"</span>: <span class="val-num">36.754482</span>
+<span class="key">"lng"</span>: <span class="val-num">3.059166</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"step"</span>: <span class="val-num">2</span>,
+  <span class="key">"updated"</span>: <span class="val-bool">true</span>,
+  <span class="key">"photos"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"photo_002"</span>,
+      <span class="key">"url"</span>: <span class="val-str">"https://..."</span>,
+      <span class="key">"isMain"</span>: <span class="val-bool">true</span>
+    }
+  ]
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT STEP 3 -->
+    <div class="endpoint" id="edit-step3">
+      <div class="endpoint-header">
+        <span class="method-badge put">PUT</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/pricing</span>
+        <span class="endpoint-desc">تعديل Step 3 — Pricing &amp; Confirm</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request Body</div>
+          <pre>{
+  <span class="key">"pricingType"</span>: <span class="val-str">"monthly"</span>,
+  <span class="key">"rent"</span>: <span class="val-num">80000</span>,
+  <span class="key">"deposit"</span>: <span class="val-num">160000</span>,
+  <span class="key">"availabilityDate"</span>: <span class="val-str">"2025-05-01"</span>,
+  <span class="key">"rentalDuration"</span>: <span class="val-str">"flexible"</span>,
+  <span class="key">"contact"</span>: {
+    <span class="key">"ownerName"</span>: <span class="val-str">"Julian Smith"</span>,
+    <span class="key">"phone"</span>: <span class="val-str">"+213 XXX XX XX XX"</span>,
+    <span class="key">"secondPhone"</span>: <span class="val-null">null</span>,
+    <span class="key">"showPhonePublicly"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_xyz789"</span>,
+  <span class="key">"step"</span>: <span class="val-num">3</span>,
+  <span class="key">"updated"</span>: <span class="val-bool">true</span>,
+  <span class="key">"status"</span>: <span class="val-str">"active"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <!-- ===== PUBLIC LISTINGS ===== -->
+  <div class="section" id="public">
+    <div class="section-header">
+      <h2>Public</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- PLATFORM STATS -->
+    <div class="endpoint" id="platform-stats">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/stats</span>
+        <span class="endpoint-desc">إحصائيات المنصة العامة — للصفحة الرئيسية</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// No auth required — public endpoint</span>
+<span class="comment">// No params</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listings"</span>: <span class="val-num">12000</span>,   <span class="comment">// عرض: 12k+</span>
+  <span class="key">"agents"</span>: <span class="val-num">800</span>,      <span class="comment">// عرض: 800+</span>
+  <span class="key">"tenants"</span>: <span class="val-num">15000</span>,   <span class="comment">// عرض: 15k+</span>
+  <span class="key">"verifiedPercent"</span>: <span class="val-num">99</span> <span class="comment">// عرض: 99%</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+        <div class="endpoint" id="get-public-listings">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/listings</span>
+        <span class="endpoint-desc">تصفح جميع المنشورات العامة مع الفلترة والترقيم</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Query Params</div>
+          <table class="params-table">
+            <thead><tr><th>المفتاح</th><th>النوع</th><th>الوصف</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">category</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>all | most_popular | nearest | latest | best_price | trending | new_construction</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">location</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span>اسم المدينة أو الحي (من search bar)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">type</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>apartment | villa | studio | house | duplex | penthouse | commercial</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">priceMin</span></td>
+                <td><span class="param-type">number</span></td>
+                <td><span class="optional-badge">optional</span>السعر الأدنى بالـ DZD</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">priceMax</span></td>
+                <td><span class="param-type">number</span></td>
+                <td><span class="optional-badge">optional</span>السعر الأقصى بالـ DZD</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">rooms</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>any | 1 | 2 | 3 | 4 | 5+</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">bathrooms</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>any | 1 | 2 | 3+</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">areaMin</span></td>
+                <td><span class="param-type">number</span></td>
+                <td><span class="optional-badge">optional</span>المساحة الدنيا م²</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">areaMax</span></td>
+                <td><span class="param-type">number</span></td>
+                <td><span class="optional-badge">optional</span>المساحة القصوى م²</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">floor</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>any | ground | 1 | 2 | 3 | 4+ | top</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">amenities</span></td>
+                <td><span class="param-type">string[]</span></td>
+                <td><span class="optional-badge">optional</span>قائمة مفصولة بفاصلة — القيم في قسم Enums أدناه<br><code>?amenities=wifi,parking,ac</code></td>
+              </tr>
+              <tr>
+                <td><span class="param-name">page</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>رقم الصفحة (افتراضي: 1)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">limit</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>عدد النتائج لكل صفحة (افتراضي: 12، max: 48)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination-note" style="margin-top:1rem">
+            يدعم الترقيم الكامل. الـ <code>category</code> يُغير منطق الترتيب في الباك اند (مثلاً <code>nearest</code> يتطلب إرسال إحداثيات المستخدم عبر <code>lat</code> و <code>lng</code>).
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"data"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_abc123"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Luxury Penthouse with Sea View"</span>,
+      <span class="key">"type"</span>: <span class="val-str">"apartment"</span>,
+      <span class="key">"location"</span>: <span class="val-str">"Downtown Marina"</span>,
+      <span class="key">"price"</span>: <span class="val-num">4500</span>,
+      <span class="key">"pricingType"</span>: <span class="val-str">"monthly"</span>,
+      <span class="key">"rooms"</span>: <span class="val-num">3</span>,
+      <span class="key">"bathrooms"</span>: <span class="val-num">2</span>,
+      <span class="key">"area"</span>: <span class="val-num">145</span>,
+      <span class="key">"floor"</span>: <span class="val-num">5</span>,
+      <span class="key">"amenities"</span>: [<span class="val-str">"wifi"</span>, <span class="val-str">"parking"</span>, <span class="val-str">"ac"</span>],
+      <span class="key">"mainPhoto"</span>: <span class="val-str">"https://..."</span>,
+      <span class="key">"createdAt"</span>: <span class="val-str">"2025-03-25T10:00:00Z"</span>
+    }
+  ],
+  <span class="key">"pagination"</span>: {
+    <span class="key">"page"</span>: <span class="val-num">1</span>,
+    <span class="key">"limit"</span>: <span class="val-num">12</span>,
+    <span class="key">"total"</span>: <span class="val-num">156</span>,
+    <span class="key">"totalPages"</span>: <span class="val-num">13</span>,
+    <span class="key">"hasNext"</span>: <span class="val-bool">true</span>,
+    <span class="key">"hasPrev"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== ENUMS & TYPES ===== -->
+  <div class="section" id="enums">
+    <div class="section-header">
+      <h2>Enums &amp; Types</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- PROPERTY TYPES -->
+    <div class="endpoint" id="enums-types">
+      <div class="endpoint-header">
+        <span class="method-badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;min-width:52px;text-align:center;font-family:var(--mono);font-size:0.72rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:5px;">ENUM</span>
+        <span class="endpoint-path">Property Types</span>
+        <span class="endpoint-desc">القيم المقبولة لحقل <code>type</code></span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">القيم</div>
+          <pre><span class="key">"apartment"</span>   <span class="comment">// شقة</span>
+<span class="key">"villa"</span>        <span class="comment">// فيلا</span>
+<span class="key">"studio"</span>       <span class="comment">// ستوديو</span>
+<span class="key">"house"</span>        <span class="comment">// منزل</span>
+<span class="key">"duplex"</span>       <span class="comment">// دوبلكس</span>
+<span class="key">"penthouse"</span>    <span class="comment">// بنتهاوس</span>
+<span class="key">"commercial"</span>   <span class="comment">// تجاري</span></pre>
+        </div>
+        <div>
+          <div class="block-label">ملاحظة الباك اند</div>
+          <pre><span class="comment">// عدد المنشورات لكل نوع يُرجع
+// مع كل نوع في استجابة الفلتر
+// مثال:</span>
+{
+  <span class="key">"type"</span>: <span class="val-str">"apartment"</span>,
+  <span class="key">"count"</span>: <span class="val-num">86</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- AMENITIES -->
+    <div class="endpoint" id="enums-amenities">
+      <div class="endpoint-header">
+        <span class="method-badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;min-width:52px;text-align:center;font-family:var(--mono);font-size:0.72rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:5px;">ENUM</span>
+        <span class="endpoint-path">Amenities</span>
+        <span class="endpoint-desc">القيم المقبولة لحقل <code>amenities[]</code> — فقط ما أُضيف عند الإنشاء</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Essential Amenities</div>
+          <pre><span class="key">"elevator"</span>     <span class="comment">// Elevator</span>
+<span class="key">"parking"</span>      <span class="comment">// Parking</span>
+<span class="key">"security"</span>     <span class="comment">// Security 24/7</span>
+<span class="key">"ac"</span>           <span class="comment">// Air Conditioning</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Additional Amenities</div>
+          <pre><span class="key">"wifi"</span>         <span class="comment">// WiFi</span>
+<span class="key">"balcony"</span>      <span class="comment">// Balcony</span>
+<span class="key">"pool"</span>         <span class="comment">// Pool</span>
+<span class="key">"gym"</span>          <span class="comment">// Gym</span>
+<span class="key">"garden"</span>       <span class="comment">// Garden</span>
+<span class="key">"furnished"</span>    <span class="comment">// Furnished</span>
+<span class="key">"pets_allowed"</span> <span class="comment">// Pets Allowed</span>
+<span class="key">"storage"</span>      <span class="comment">// Storage</span>
+<span class="key">"wheelchair"</span>   <span class="comment">// Wheelchair Access</span></pre>
+        </div>
+        <div class="pagination-note full-width" style="grid-column:1/-1;margin-top:0">
+          الفصل بين Essential وAdditional هو فقط للعرض في الـ UI — في الباك اند كلها حقل <code>amenities[]</code> واحد. كل قيمة Essential تُعرض مع عدد المنشورات التي تحتويها (<code>count</code>) في الفلتر.
+        </div>
+      </div>
+    </div>
+
+    <!-- SORT & CATEGORIES -->
+    <div class="endpoint" id="enums-sort">
+      <div class="endpoint-header">
+        <span class="method-badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;min-width:52px;text-align:center;font-family:var(--mono);font-size:0.72rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:5px;">ENUM</span>
+        <span class="endpoint-path">Sort Categories</span>
+        <span class="endpoint-desc">قيم <code>category</code> وترتيب الباك اند المقابل لها</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="full-width" style="grid-column:1/-1">
+          <div class="block-label">جدول التصنيفات</div>
+          <table class="params-table" style="margin-top:0.5rem">
+            <thead><tr><th>القيمة</th><th>منطق الترتيب في الباك اند</th><th>ملاحظة</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">all</span></td>
+                <td>بدون ترتيب خاص</td>
+                <td>الافتراضي</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">most_popular</span></td>
+                <td>ORDER BY views DESC</td>
+                <td>عدد المشاهدات</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">nearest</span></td>
+                <td>ORDER BY distance ASC</td>
+                <td>يتطلب <code>lat</code> و <code>lng</code> في الـ query</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">latest</span></td>
+                <td>ORDER BY createdAt DESC</td>
+                <td>الأحدث أولاً</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">best_price</span></td>
+                <td>ORDER BY price ASC</td>
+                <td>الأرخص أولاً</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">trending</span></td>
+                <td>ORDER BY (views + favorites) DESC في آخر 7 أيام</td>
+                <td>نشاط الأسبوع الحالي</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">new_construction</span></td>
+                <td>WHERE isNewConstruction = true ORDER BY createdAt DESC</td>
+                <td>فلتر ثابت + ترتيب</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+    <!-- ===== FAVORITES ===== -->
+  <div class="section" id="favorites">
+    <div class="section-header">
+      <h2>Favorites</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- ADD FAVORITE -->
+    <div class="endpoint" id="add-favorite">
+      <div class="endpoint-header">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-path">/favorites/<span class="param">:listingId</span></span>
+        <span class="endpoint-desc">إضافة منشور للمفضلة</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// No body required</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 201</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_abc123"</span>,
+  <span class="key">"favorited"</span>: <span class="val-bool">true</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMOVE FAVORITE -->
+    <div class="endpoint" id="remove-favorite">
+      <div class="endpoint-header">
+        <span class="method-badge delete">DELETE</span>
+        <span class="endpoint-path">/favorites/<span class="param">:listingId</span></span>
+        <span class="endpoint-desc">حذف منشور من المفضلة</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// No body required</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_abc123"</span>,
+  <span class="key">"favorited"</span>: <span class="val-bool">false</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET FAVORITES -->
+    <div class="endpoint" id="get-favorites">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/favorites</span>
+        <span class="endpoint-desc">قائمة المنشورات المفضلة للمستخدم مع الترقيم</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Query Params</div>
+          <table class="params-table">
+            <thead><tr><th>المفتاح</th><th>النوع</th><th>الوصف</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">page</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>رقم الصفحة (افتراضي: 1)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">limit</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>عدد النتائج لكل صفحة (افتراضي: 12)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination-note" style="margin-top:1rem">
+            يدعم الترقيم. كل عنصر يحتوي على بيانات المنشور الكافية لعرض البطاقة.
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"data"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_abc123"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Luxury Penthouse with Sea View"</span>,
+      <span class="key">"type"</span>: <span class="val-str">"apartment"</span>,
+      <span class="key">"location"</span>: <span class="val-str">"Downtown Marina"</span>,
+      <span class="key">"price"</span>: <span class="val-num">4500</span>,
+      <span class="key">"pricingType"</span>: <span class="val-str">"monthly"</span>,
+      <span class="key">"rooms"</span>: <span class="val-num">3</span>,
+      <span class="key">"bathrooms"</span>: <span class="val-num">2</span>,
+      <span class="key">"area"</span>: <span class="val-num">145</span>,
+      <span class="key">"mainPhoto"</span>: <span class="val-str">"https://..."</span>,
+      <span class="key">"favoritedAt"</span>: <span class="val-str">"2025-03-20T14:00:00Z"</span>
+    }
+  ],
+  <span class="key">"pagination"</span>: {
+    <span class="key">"page"</span>: <span class="val-num">1</span>,
+    <span class="key">"limit"</span>: <span class="val-num">12</span>,
+    <span class="key">"total"</span>: <span class="val-num">8</span>,
+    <span class="key">"totalPages"</span>: <span class="val-num">1</span>,
+    <span class="key">"hasNext"</span>: <span class="val-bool">false</span>,
+    <span class="key">"hasPrev"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+    <!-- ===== REVIEWS ===== -->
+  <div class="section" id="reviews">
+    <div class="section-header">
+      <h2>Reviews</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- LISTING TITLES (for filter tabs) -->
+    <div class="endpoint" id="get-listing-titles">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/owner/listings/titles</span>
+        <span class="endpoint-desc">عناوين المنشورات + IDs — لبناء فلاتر الـ UI</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// No query params</span></pre>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"data"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_abc"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Luxury Villa"</span>
+    },
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_def"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Downtown Apartment"</span>
+    },
+    {
+      <span class="key">"id"</span>: <span class="val-str">"listing_ghi"</span>,
+      <span class="key">"title"</span>: <span class="val-str">"Seaside Studio"</span>
+    }
+  ]
+}</pre>
+        </div>
+        <div class="pagination-note full-width" style="grid-column:1/-1;margin-top:0">
+          يُستدعى مرة واحدة عند تحميل صفحة Reviews لبناء فلاتر التبويب. الـ UI يضيف "All Properties" كأول tab من طرفه، ثم يمرر <code>listingId</code> إلى endpoint ملخص التقييمات عند اختيار أي منشور.
+        </div>
+      </div>
+    </div>
+
+    <!-- RATING SUMMARY -->
+    <div class="endpoint" id="get-rating-summary">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/owner/reviews/summary</span>
+        <span class="endpoint-desc">ملخص التقييمات + توزيع النجوم</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Query Params</div>
+          <table class="params-table">
+            <thead><tr><th>المفتاح</th><th>النوع</th><th>الوصف</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">listingId</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span>إذا غاب → إجمالي كل المنشورات (All Properties)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"averageRating"</span>: <span class="val-num">4.7</span>,
+  <span class="key">"totalReviews"</span>: <span class="val-num">32</span>,
+  <span class="key">"distribution"</span>: {
+    <span class="key">"5"</span>: { <span class="key">"count"</span>: <span class="val-num">24</span>, <span class="key">"percent"</span>: <span class="val-num">75</span> },
+    <span class="key">"4"</span>: { <span class="key">"count"</span>: <span class="val-num">6</span>,  <span class="key">"percent"</span>: <span class="val-num">18</span> },
+    <span class="key">"3"</span>: { <span class="key">"count"</span>: <span class="val-num">1</span>,  <span class="key">"percent"</span>: <span class="val-num">4</span>  },
+    <span class="key">"2"</span>: { <span class="key">"count"</span>: <span class="val-num">1</span>,  <span class="key">"percent"</span>: <span class="val-num">3</span>  },
+    <span class="key">"1"</span>: { <span class="key">"count"</span>: <span class="val-num">0</span>,  <span class="key">"percent"</span>: <span class="val-num">0</span>  }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SUBMIT REVIEW -->
+    <div class="endpoint" id="post-review">
+      <div class="endpoint-header">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/reviews</span>
+        <span class="endpoint-desc">إضافة تعليق على منشور</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// Body</span>
+{
+  <span class="key">"userId"</span>: <span class="val-str">"user_ahmed123"</span>,  <span class="comment">// required</span>
+  <span class="key">"content"</span>: <span class="val-str">"One of the best properties..."</span>  <span class="comment">// required</span>
+}</pre>
+          <div class="pagination-note" style="margin-top:1rem">
+            <span style="font-size:1rem;flex-shrink:0">ℹ</span>
+            <div>
+              أي مستخدم مسجل يمكنه التعليق بدون قيود — لا يوجد تحقق من سجل المستأجرين، ويُسمح بعدد لا محدود من التعليقات لنفس المستخدم على نفس المنشور.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 201</div>
+          <pre>{
+  <span class="key">"id"</span>: <span class="val-str">"review_001"</span>,
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_abc123"</span>,
+  <span class="key">"userId"</span>: <span class="val-str">"user_ahmed123"</span>,
+  <span class="key">"content"</span>: <span class="val-str">"One of the best properties..."</span>,
+  <span class="key">"createdAt"</span>: <span class="val-str">"2025-03-27T10:00:00Z"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SUBMIT RATING -->
+    <div class="endpoint" id="post-rating">
+      <div class="endpoint-header">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/rating</span>
+        <span class="endpoint-desc">إضافة تقييم بالنجوم على منشور</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Request</div>
+          <pre><span class="comment">// Headers</span>
+<span class="key">Authorization</span>: Bearer &lt;token&gt;
+
+<span class="comment">// Body</span>
+{
+  <span class="key">"userId"</span>: <span class="val-str">"user_ahmed123"</span>,  <span class="comment">// required</span>
+  <span class="key">"stars"</span>: <span class="val-num">5</span>              <span class="comment">// required — integer 1..5</span>
+}</pre>
+          <div class="pagination-note" style="margin-top:1rem;background:rgba(252,129,129,0.06);border-color:rgba(252,129,129,0.25);color:#fc8181">
+            <span style="font-size:1rem;flex-shrink:0">⚠</span>
+            <div>
+              <strong>شرط الصلاحية:</strong> نفس قاعدة التعليق — يجب أن يكون <code>userId</code> في سجل مستأجري هذا المنشور.<br><br>
+              <strong>تقييم واحد لكل منشور:</strong> إذا قيّم المستخدم المنشور مسبقاً → <code>409 Conflict</code>. لا يوجد تعديل للتقييم.<br><br>
+              بعد كل تقييم جديد يجب إعادة حساب <code>averageRating</code> في الباك اند وتحديثه على المنشور مباشرة.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 201</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_abc123"</span>,
+  <span class="key">"userId"</span>: <span class="val-str">"user_ahmed123"</span>,
+  <span class="key">"stars"</span>: <span class="val-num">5</span>,
+  <span class="key">"newAverageRating"</span>: <span class="val-num">4.7</span>,
+  <span class="key">"totalRatings"</span>: <span class="val-num">33</span>
+}
+
+<span class="comment">// Errors:</span>
+<span class="comment">// 400 — stars خارج نطاق 1..5</span>
+<span class="comment">// 403 — ليس مستأجراً لهذا المنشور</span>
+<span class="comment">// 409 — سبق وأضاف تقييماً</span></pre>
+        </div>
+      </div>
+    </div>
+
+        <div class="endpoint" id="get-reviews">
+      <div class="endpoint-header">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-path">/listings/<span class="param">:listingId</span>/reviews</span>
+        <span class="endpoint-desc">تعليقات منشور مع ترقيم الصفحات</span>
+      </div>
+      <div class="endpoint-body">
+        <div>
+          <div class="block-label">Query Params</div>
+          <table class="params-table">
+            <thead><tr><th>المفتاح</th><th>النوع</th><th>الوصف</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">page</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>رقم الصفحة (افتراضي: 1)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">limit</span></td>
+                <td><span class="param-type">integer</span></td>
+                <td><span class="optional-badge">optional</span>عدد التعليقات لكل صفحة (افتراضي: 10, max: 50)</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">sort</span></td>
+                <td><span class="param-type">string</span></td>
+                <td><span class="optional-badge">optional</span><code>newest | oldest | highest | lowest</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination-note">
+            هذه النقطة تدعم الترقيم (Pagination). كل تعليق يحتوي على المحتوى النصي، التقييم (1–5)، ومعلومات الحساب.
+          </div>
+        </div>
+        <div>
+          <div class="block-label">Response 200</div>
+          <pre>{
+  <span class="key">"listingId"</span>: <span class="val-str">"listing_abc123"</span>,
+  <span class="key">"averageRating"</span>: <span class="val-num">4.6</span>,
+  <span class="key">"totalReviews"</span>: <span class="val-num">38</span>,
+  <span class="key">"data"</span>: [
+    {
+      <span class="key">"id"</span>: <span class="val-str">"review_001"</span>,
+      <span class="key">"content"</span>: <span class="val-str">"One of the best properties I've visited in Hay Salam."</span>,
+      <span class="key">"rating"</span>: <span class="val-num">5</span>,
+      <span class="key">"account"</span>: {
+        <span class="key">"id"</span>: <span class="val-str">"user_ahmed123"</span>,
+        <span class="key">"fullName"</span>: <span class="val-str">"Ahmed Belhadj"</span>,
+        <span class="key">"avatarUrl"</span>: <span class="val-str">"https://..."</span>
+      },
+      <span class="key">"createdAt"</span>: <span class="val-str">"2025-03-13T09:00:00Z"</span>
+    }
+  ],
+  <span class="key">"pagination"</span>: {
+    <span class="key">"page"</span>: <span class="val-num">1</span>,
+    <span class="key">"limit"</span>: <span class="val-num">10</span>,
+    <span class="key">"total"</span>: <span class="val-num">38</span>,
+    <span class="key">"totalPages"</span>: <span class="val-num">4</span>,
+    <span class="key">"hasNext"</span>: <span class="val-bool">true</span>,
+    <span class="key">"hasPrev"</span>: <span class="val-bool">false</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  });
+</script>
+</body>
+</html>
