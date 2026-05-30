@@ -25,7 +25,8 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("join", (userId) => {
-    socket.join(userId); // كل user في room خاصة به
+    socket.join(userId);
+    emitStatsUpdate(io, userId);
   });
 
   socket.on("disconnect", () => {
@@ -50,6 +51,8 @@ const userRouter = require('./api/User');
 const propretyRouter = require('./api/Proprety');
 const notificationRouter = require('./api/notification');
 const visitRequestRouter = require('./api/visitRequests');
+const dashboardRouter = require('./api/dashboard');
+const emitStatsUpdate = require('./helpers/emitStatsUpdate');
 
 
 // All routes start with /user
@@ -57,6 +60,7 @@ app.use('/user', userRouter);
 app.use('/proprety', propretyRouter);
 app.use('/notification', notificationRouter);
 app.use('/api/visit-requests', visitRequestRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 app.use(express.static("public"));
 

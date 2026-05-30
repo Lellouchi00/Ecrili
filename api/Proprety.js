@@ -7,6 +7,7 @@ const User = require("../models/User");
 const auth = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 const upload = require("../middleware/upload");
+const emitStatsUpdate = require("../helpers/emitStatsUpdate");
 
 const toFiniteNumber = (value, fallback = undefined) => {
   if (value === undefined || value === null || value === "") {
@@ -648,6 +649,10 @@ router.post("/", auth, upload.array("images", 10), async (req, res) => {
       message: "Property created",
       type: "review"
     });
+
+    if (global.io) {
+      emitStatsUpdate(global.io, property.owner);
+    }
 
     res.status(201).json({ success: true, data: property });
   } catch (err) {

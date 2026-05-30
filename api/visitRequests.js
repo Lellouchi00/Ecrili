@@ -3,6 +3,7 @@ const VisitRequest = require("../models/VisitRequest");
 const Property = require("../models/Propreties");
 const Notification = require("../models/notification");
 const auth = require("../middleware/authMiddleware");
+const emitStatsUpdate = require("../helpers/emitStatsUpdate");
 
 //---------------------------
 // POST /api/visit-requests
@@ -42,6 +43,7 @@ router.post("/", auth, async (req, res) => {
         message: `Someone wants to visit "${property.title}"`,
         type: "visit_request"
       });
+      emitStatsUpdate(global.io, property.owner);
     }
 
     res.status(201).json({
@@ -93,8 +95,11 @@ router.patch("/:id", auth, async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    if (visitRequest.status !== "pending") {
-      return res.status(400).json({ success: false, message: `Already ${visitRequest.status}` });
+    // Fallback: If status field is missing/undefined in database, treat it safely as "pending"
+    const currentStatus = visitRequest.status || "pending";
+
+    if (currentStatus !== "pending") {
+      return res.status(400).json({ success: false, message: `Already ${currentStatus}` });
     }
 
     visitRequest.status = status;
@@ -114,9 +119,34 @@ router.patch("/:id", auth, async (req, res) => {
         message: `Your visit request for "${visitRequest.propertyId.title}" was ${msg}`,
         type: "visit_response"
       });
+      emitStatsUpdate(global.io, visitRequest.tenantId._id);
     }
 
     res.json({ success: true, data: visitRequest });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+//---------------------------
+// DELETE /api/visit-requests/:id
+//---------------------------
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const visitRequest = await VisitRequest.findById(req.params.id);
+
+    if (!visitRequest) {
+      return res.status(404).json({ success: false, message: "Visit request not found" });
+    }
+
+    // Security checkpoint: Verify that only the true property owner can delete this log entry
+    if (String(visitRequest.ownerId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this request" });
+    }
+
+    await VisitRequest.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: "Visit request deleted permanently" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

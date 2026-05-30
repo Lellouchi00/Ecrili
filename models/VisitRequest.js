@@ -20,8 +20,10 @@ const visitRequestSchema = new mongoose.Schema({
     type: String
   },
   status: {
-    type: String
+    type: String,
+    enum: ["pending", "accepted", "rejected"],
+    default: "pending" // <--- Added default value here
   }
-});
+}, { timestamps: true }); // Adding timestamps is highly recommended for sorting!
 
 module.exports = mongoose.model("VisitRequest", visitRequestSchema);
