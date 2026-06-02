@@ -369,29 +369,43 @@ router.get("/stats/overview", async (req, res) => {
 //---------------------------
 router.get("/", async (req, res) => {
   try {
-    const { location, room_type, min_price, max_price, page, limit, sort } = req.query;
-
-    if (!location || !room_type || !min_price || !max_price || !page || !limit) {
-      return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
-    }
-
-    if (isNaN(Number(min_price)) || isNaN(Number(max_price)) || isNaN(Number(page)) || isNaN(Number(limit))) {
-      return res.status(400).json({ success: false, error: "INVALID_NUMBERS" });
-    }
-
-    if (Number(min_price) > Number(max_price)) {
-      return res.status(400).json({ success: false, error: "INVALID_PRICE_RANGE" });
-    }
+    const { location, room_type, min_price, max_price, page = 1, limit = 10, sort } = req.query;
 
     const query = {
-      "location.city": location,
-      type: room_type,
-      price: { $gte: Number(min_price), $lte: Number(max_price) },
       status: "available"
     };
 
-    const pageNumber = Number(page);
-    const limitNumber = Number(limit);
+    // Add filters only if provided
+    if (location) {
+      query["location.city"] = location;
+    }
+    if (room_type) {
+      query.type = room_type;
+    }
+
+    // Handle price range
+    if (min_price || max_price) {
+      query.price = {};
+      if (min_price && !isNaN(Number(min_price))) {
+        query.price.$gte = Number(min_price);
+      }
+      if (max_price && !isNaN(Number(max_price))) {
+        query.price.$lte = Number(max_price);
+      }
+    }
+
+    // Validate price range if both provided
+    if (min_price && max_price && Number(min_price) > Number(max_price)) {
+      return res.status(400).json({ success: false, error: "INVALID_PRICE_RANGE" });
+    }
+
+    // Parse pagination
+    let pageNumber = Number(page) || 1;
+    let limitNumber = Number(limit) || 10;
+
+    // Ensure valid pagination values
+    if (pageNumber < 1) pageNumber = 1;
+    if (limitNumber < 1 || limitNumber > 100) limitNumber = 10;
 
     const sortOptions = {
       latest: { createdAt: -1 },
@@ -401,7 +415,7 @@ router.get("/", async (req, res) => {
     };
 
     const properties = await Property.find(query)
-      .sort(sortOptions[sort] || {})
+      .sort(sortOptions[sort] || { createdAt: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
       .populate("owner", "name avatar rating");
@@ -414,7 +428,7 @@ router.get("/", async (req, res) => {
         properties,
         pagination: {
           current_page: pageNumber,
-          total_pages: Math.ceil(total / limitNumber),
+          total_pages: Math.max(1, Math.ceil(total / limitNumber)),
           total_items: total
         }
       }

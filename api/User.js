@@ -544,5 +544,54 @@ router.get('/me/saved',auth,async(req,res)=>{
 
 
 });
+//---------------------
+//UPDATE USER 
+//--------------------
+router.put('/me', auth, async (req, res) => {
+  try {
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    const {
+      name,
+      famillyname,
+      username,
+      phone,
+      email,
+      dateOfBirth,
+      image,
+      isLessor
+    } = req.body;
+
+    if (name !== undefined) user.name = name;
+    if (famillyname !== undefined) user.famillyname = famillyname;
+    if (username !== undefined) user.username = username;
+    if (phone !== undefined) user.phone = phone;
+    if (email !== undefined) user.email = email;
+    if (dateOfBirth !== undefined) user.dateOfBirth = dateOfBirth;
+    if (image !== undefined) user.image = image;
+    if (isLessor !== undefined) user.isLessor = isLessor;
+
+    await user.save();
+
+    const token = signUserToken(user);
+
+    res.status(200).json({
+      message: "User updated successfully",
+      token
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
 
 module.exports = router;
