@@ -53,6 +53,8 @@ const readBodyValue = (body, keys = []) => {
   return undefined;
 };
 
+const firstScalar = (v) => Array.isArray(v) ? v[0] : v;
+
 const normalizeAmenities = (value) => {
   if (Array.isArray(value)) {
     return value.filter(Boolean);
@@ -364,6 +366,10 @@ router.get("/stats/overview", async (req, res) => {
   }
 });
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const validSortKeys = ["latest", "best_price", "popular", "trending"];
+
 //---------------------------
 // Search Properties With Filters
 //---------------------------
@@ -371,56 +377,65 @@ router.get("/", async (req, res) => {
   try {
     const { location, room_type, min_price, max_price, page = 1, limit = 10, sort } = req.query;
 
-    const query = {
-      status: "available"
-    };
+    const query = {};
 
-    // Add filters only if provided
-    if (location) {
-      query["location.city"] = location;
-    }
-    if (room_type) {
-      query.type = room_type;
+    if (location && location.trim()) {
+      const escaped = escapeRegex(location.trim());
+      query.$or = [
+        { "location.city": { $regex: escaped, $options: "i" } },
+        { "location.address": { $regex: escaped, $options: "i" } },
+        { "location.state": { $regex: escaped, $options: "i" } },
+        { $and: [
+          { location: { $type: "string" } },
+          { location: { $regex: escaped, $options: "i" } }
+        ]}
+      ];
     }
 
-    // Handle price range
-    if (min_price || max_price) {
+    if (room_type && room_type.trim()) {
+      const escaped = escapeRegex(room_type.trim());
+      query.type = { $regex: `^${escaped}$`, $options: "i" };
+    }
+
+    const minP = min_price !== undefined && min_price !== null && min_price !== "" ? Number(min_price) : undefined;
+    const maxP = max_price !== undefined && max_price !== null && max_price !== "" ? Number(max_price) : undefined;
+
+    if (minP !== undefined || maxP !== undefined) {
+      if ((minP !== undefined && isNaN(minP)) || (maxP !== undefined && isNaN(maxP))) {
+        return res.status(400).json({ success: false, error: "INVALID_PRICE" });
+      }
+
+      if (minP !== undefined && maxP !== undefined && minP > maxP) {
+        return res.status(400).json({ success: false, error: "INVALID_PRICE_RANGE" });
+      }
+
       query.price = {};
-      if (min_price && !isNaN(Number(min_price))) {
-        query.price.$gte = Number(min_price);
-      }
-      if (max_price && !isNaN(Number(max_price))) {
-        query.price.$lte = Number(max_price);
-      }
+      if (minP !== undefined) query.price.$gte = minP;
+      if (maxP !== undefined) query.price.$lte = maxP;
     }
 
-    // Validate price range if both provided
-    if (min_price && max_price && Number(min_price) > Number(max_price)) {
-      return res.status(400).json({ success: false, error: "INVALID_PRICE_RANGE" });
+    let pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    let limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
+    if (sort && !validSortKeys.includes(sort)) {
+      return res.status(400).json({ success: false, error: "INVALID_SORT_KEY" });
     }
-
-    // Parse pagination
-    let pageNumber = Number(page) || 1;
-    let limitNumber = Number(limit) || 10;
-
-    // Ensure valid pagination values
-    if (pageNumber < 1) pageNumber = 1;
-    if (limitNumber < 1 || limitNumber > 100) limitNumber = 10;
 
     const sortOptions = {
       latest: { createdAt: -1 },
       best_price: { price: 1 },
       popular: { views: -1 },
-      trending: { views: -1 }
+      trending: { views: -1, createdAt: -1 },
     };
 
-    const properties = await Property.find(query)
-      .sort(sortOptions[sort] || { createdAt: -1 })
-      .skip((pageNumber - 1) * limitNumber)
-      .limit(limitNumber)
-      .populate("owner", "name avatar rating");
-
-    const total = await Property.countDocuments(query);
+    const [properties, total] = await Promise.all([
+      Property.find(query)
+        .sort(sortOptions[sort] || { createdAt: -1 })
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber)
+        .populate("owner", "name email images"),
+      Property.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
@@ -638,19 +653,82 @@ router.get("/:id", async (req, res) => {
 router.post("/", auth, upload.array("images", 10), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
+      return res.status(400).json({ success: false, error: "IMAGES_REQUIRED" });
     }
 
-    const property = new Property({
-      owner: req.user.id,
-      status: "pending_review",
+    const requiredFields = { title: "title", type: "type", city: "city", price: "price" };
+    const missing = Object.entries(requiredFields).filter(([, path]) => {
+      const raw = req.body[path];
+      const value = firstScalar(raw);
+      return value === undefined || value === null || value === "" || (typeof value === "string" && !value.trim());
     });
 
-    applyPropertyPayload(property, req.body);
-
-    if (!property.title || !property.type || !property.location?.city || !property.price) {
-      return res.status(400).json({ success: false, error: "VALIDATION_ERROR" });
+    if (missing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        missingFields: missing.map(([key]) => key)
+      });
     }
+
+    const spec = req.body.specifications || {};
+    const parseBool = (v) => v === true || v === "true" || v === "yes" || v === "1" || v === "on";
+
+    const f = (v) => firstScalar(v);
+    const property = new Property({
+      title: f(req.body.title),
+      type: f(req.body.type),
+      description: f(req.body.description) || "",
+      area: toFiniteNumber(f(req.body.area), 0),
+      rooms: toFiniteNumber(f(req.body.rooms), 0),
+      bathrooms: toFiniteNumber(f(req.body.bathrooms), 0),
+      floor: toFiniteNumber(f(req.body.floor), 0),
+      amenities: normalizeAmenities(req.body.amenities),
+      location: {
+        address: f(req.body.address) || "",
+        city: f(req.body.city),
+        state: f(req.body.state) || "",
+        country: f(req.body.country) || "Algeria",
+        lat: toFiniteNumber(f(req.body.lat ?? req.body.location?.lat), undefined),
+        lng: toFiniteNumber(f(req.body.lng ?? req.body.location?.lng), undefined),
+      },
+      price: toFiniteNumber(f(req.body.price), 0),
+      deposit: toFiniteNumber(f(req.body.deposit), 0),
+      availability_date: f(req.body.availability_date) || null,
+      rental_duration: f(req.body.rental_duration) || "flexible",
+      contact: {
+        owner_name: f(req.body.contact?.owner_name || req.body.owner_name) || "",
+        phone: f(req.body.contact?.phone || req.body.phone) || "",
+        second_phone: f(req.body.contact?.second_phone || req.body.second_phone) || "",
+        show_phone: parseBool(f(req.body.contact?.show_phone ?? req.body.show_phone)),
+      },
+      owner: req.user.id,
+      status: "pending_review",
+      specifications: {
+        bedrooms: toFiniteNumber(spec.bedrooms, toFiniteNumber(req.body.rooms, 0)),
+        bathrooms: toFiniteNumber(spec.bathrooms, toFiniteNumber(req.body.bathrooms, 0)),
+        area: toFiniteNumber(spec.area, toFiniteNumber(req.body.area, 0)),
+        builtIn: toFiniteNumber(spec.builtIn, null),
+        parking: parseBool(spec.parking),
+        internet: parseBool(spec.internet),
+        available: spec.available || "Immediately",
+        security: parseBool(spec.security),
+        furnished: parseBool(spec.furnished),
+        petFriendly: parseBool(spec.petFriendly),
+        smookingAllowed: parseBool(spec.smookingAllowed),
+        heating: parseBool(spec.heating),
+        cooling: parseBool(spec.cooling),
+        washer: parseBool(spec.washer),
+        dryer: parseBool(spec.dryer),
+        dishwasher: parseBool(spec.dishwasher),
+        balcony: parseBool(spec.balcony),
+        garden: parseBool(spec.garden),
+        pool: parseBool(spec.pool),
+        gym: parseBool(spec.gym),
+        elevator: parseBool(spec.elevator),
+        wheelchairAccess: parseBool(spec.wheelchairAccess),
+      },
+    });
 
     property.images = await uploadImagesToCloudinary(req.files);
 
@@ -659,7 +737,7 @@ router.post("/", auth, upload.array("images", 10), async (req, res) => {
     await Notification.create({
       user: property.owner,
       title: "New Property",
-      message: "Property created",
+      message: `Property "${property.title}" created and pending review`,
       type: "review"
     });
 

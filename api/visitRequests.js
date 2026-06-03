@@ -9,11 +9,11 @@ const auth = require("../middleware/authMiddleware");
 //---------------------------
 router.post("/", auth, async (req, res) => {
   try {
-    const { propertyId, visitDate, message } = req.body;
+    const { propertyId, visitDate, startDate, endDate, message } = req.body;
     const tenantId = req.user.id;
 
-    if (!propertyId || !visitDate) {
-      return res.status(400).json({ success: false, message: "propertyId and visitDate are required" });
+    if (!propertyId || (!visitDate && !startDate && !endDate)) {
+      return res.status(400).json({ success: false, message: "propertyId and at least one date field (visitDate or startDate/endDate) are required" });
     }
 
     const property = await Property.findById(propertyId);
@@ -25,7 +25,9 @@ router.post("/", auth, async (req, res) => {
       propertyId,
       tenantId,
       ownerId: property.owner,
-      visitDate: new Date(visitDate),
+      visitDate: visitDate ? new Date(visitDate) : undefined,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
       message: message || "",
     });
 
@@ -55,12 +57,28 @@ router.post("/", auth, async (req, res) => {
 });
 
 //---------------------------
-// GET /api/visit-requests
+// GET /api/visit-requests (as owner)
 //---------------------------
 router.get("/", auth, async (req, res) => {
   try {
     const requests = await VisitRequest.find({ ownerId: req.user.id })
       .populate("tenantId", "name email phone images")
+      .populate("propertyId", "title location price images")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: requests });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+//---------------------------
+// GET /api/visit-requests/mine (as tenant)
+//---------------------------
+router.get("/mine", auth, async (req, res) => {
+  try {
+    const requests = await VisitRequest.find({ tenantId: req.user.id })
+      .populate("ownerId", "name email phone images")
       .populate("propertyId", "title location price images")
       .sort({ createdAt: -1 });
 

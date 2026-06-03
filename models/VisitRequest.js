@@ -16,6 +16,12 @@ const visitRequestSchema = new mongoose.Schema({
   visitDate: {
     type: Date
   },
+  startDate: {
+    type: Date
+  },
+  endDate: {
+    type: Date
+  },
   message: {
     type: String
   },
